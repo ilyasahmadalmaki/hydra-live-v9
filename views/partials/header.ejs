@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><%= appName %> // <%= title %></title>
+<link rel="stylesheet" href="/css/hydra.css">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="hz-root">
+  <div class="hz-grid-bg"></div>
+
+  <header class="hz-topbar">
+    <div class="hz-logo">HYDRA<span>LIVE</span></div>
+    <div class="hz-badge">SYS.ONLINE</div>
+    <div class="hz-badge warn">V9 // NIGHTFALL</div>
+    <div class="hz-clock" id="hzClock">--:--:--</div>
+  </header>
+
+  <div class="hz-body">
+    <%- include('sidebar', { active: active }) %>
+    <main class="hz-main">
