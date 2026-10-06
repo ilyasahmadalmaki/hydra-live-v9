@@ -27,6 +27,42 @@
   </form>
 </div>
 
+<p class="hz-sec" style="margin-top:20px">NOTIFIKASI_TELEGRAM</p>
+<div class="hz-card">
+  <form method="POST" action="/settings" class="hz-form">
+    <div class="hz-field">
+      <label>AKTIFKAN</label>
+      <select class="hz-select" name="telegram_enabled">
+        <option value="1" <%= settings.telegram_enabled==='1'?'selected':'' %>>YA</option>
+        <option value="0" <%= settings.telegram_enabled!=='1'?'selected':'' %>>TIDAK</option>
+      </select>
+    </div>
+    <div class="hz-field">
+      <label>BOT TOKEN <span class="hz-dim">(dari @BotFather)</span></label>
+      <input class="hz-input" type="password" name="telegram_bot_token" value="<%= settings.telegram_bot_token || '' %>" autocomplete="off" placeholder="123456:ABC-DEF...">
+    </div>
+    <div class="hz-field">
+      <label>CHAT ID <span class="hz-dim">(dari @userinfobot)</span></label>
+      <input class="hz-input" name="telegram_chat_id" value="<%= settings.telegram_chat_id || '' %>" placeholder="123456789">
+    </div>
+    <div class="hz-field hz-field-btn">
+      <button class="hz-btn go" type="submit">💾 SIMPAN</button>
+    </div>
+  </form>
+  <div class="hz-btnrow">
+    <button class="hz-btn" id="hzTgTest">✉ TEST NOTIFIKASI</button>
+  </div>
+  <p class="hz-hint">▸ Terkirim saat: rotasi error (throttle 15 mnt), stream health buruk, dan saat pulih kembali.</p>
+</div>
+
+<script>
+  document.getElementById('hzTgTest').addEventListener('click', function(){
+    fetch('/api/telegram/test', { method: 'POST' })
+      .then(function(r){ return r.json(); })
+      .then(function(d){ alert(d.ok ? 'Terkirim! Cek Telegram lu.' : 'Gagal — cek token & chat ID, lalu SIMPAN dulu.'); });
+  });
+</script>
+
 <p class="hz-sec" style="margin-top:20px">SYSTEM</p>
 <div class="hz-card">
   <div class="hz-stat"><span>database</span><b>data/hydra.db</b></div>
