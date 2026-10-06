@@ -59,12 +59,13 @@ hydra-live-v9/
 - [x] Settings encoder (bitrate, preset)
 - [ ] Login & proteksi halaman
 
-### Fase 2 — Loop engine & scheduler
-- [ ] Rotation ala streamflow: setting sekali (channel + daftar video + jam tayang + gap + repeat harian/mingguan)
-- [ ] Mode "loop forever" 24/7 nonstop
-- [ ] Satu broadcast persistent per rotasi (keputusan: hemat kuota API)
-- [ ] Auto-reconnect + retry backoff
-- [ ] Scheduler: auto-start/auto-stop berjadwal
+### Fase 2 — Loop engine & scheduler (IN PROGRESS)
+- [x] Rotation ala streamflow: setting sekali (channel + daftar video + jam tayang + gap + repeat harian/mingguan)
+- [x] Mode "loop forever" 24/7 nonstop
+- [x] Satu broadcast persistent per rotasi (keputusan: hemat kuota API)
+- [x] Auto-reconnect + retry backoff (10s → 5 mnt)
+- [x] Engine tick 30 detik: auto-start saat masuk window, auto-stop + geser index saat window tutup
+- [ ] Login & proteksi halaman (sisa fase 1)
 
 ### Fase 3 — YouTube API penuh
 - [ ] OAuth per channel (YouTube Data API v3)
