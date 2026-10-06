@@ -1,0 +1,35 @@
+<%- include('partials/header', { title: 'PILIH CHANNEL', active: 'channels' }) %>
+
+<p class="hz-sec">CHANNEL_YOUTUBE_TERHUBUNG</p>
+<div class="hz-card">
+  <p class="hz-hint" style="margin-top:0">▸ Pilih channel YouTube, lalu hubungkan ke channel HydraLive. Setelah terhubung, channel otomatis pindah ke <b>YT-API mode</b>.</p>
+  <% if (!channels.length) { %>
+    <div class="hz-empty">_tidak ada channel ditemukan di akun Google ini_</div>
+  <% } %>
+  <div class="hz-cards" style="margin-top:14px">
+    <% channels.forEach(function(yt){ %>
+      <div class="hz-card">
+        <div class="hz-plat"><span class="hz-dot"></span><%= yt.title %></div>
+        <div class="hz-stat"><span>yt id</span><b class="hz-mono-sm"><%= yt.id %></b></div>
+        <form method="POST" action="/oauth/credentials/<%= credId %>/link" class="hz-form" style="margin-top:12px">
+          <input type="hidden" name="yt_id" value="<%= yt.id %>">
+          <input type="hidden" name="yt_title" value="<%= yt.title %>">
+          <input type="hidden" name="yt_thumb" value="<%= yt.thumbnail || '' %>">
+          <div class="hz-field">
+            <label>HUBUNGKAN KE HYDRA CHANNEL</label>
+            <select class="hz-select" name="hydra_channel_id" required>
+              <% hydraChannels.forEach(function(h){ %>
+                <option value="<%= h.id %>"><%= h.name %> (<%= h.mode %>)</option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="hz-field">
+            <button class="hz-btn go" type="submit">🔗 HUBUNGKAN</button>
+          </div>
+        </form>
+      </div>
+    <% }) %>
+  </div>
+</div>
+
+<%- include('partials/footer') %>
