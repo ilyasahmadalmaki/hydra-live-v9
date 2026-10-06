@@ -1,6 +1,5 @@
 require('dotenv').config();
-const os = require('os');
-const path = require('path');
+const os = require('os');const path = require('path');
 const fs = require('fs');
 const express = require('express');
 const session = require('express-session');
@@ -19,6 +18,11 @@ const streamer = require('./services/streamingService');
 const rotationService = require('./services/rotationService');
 const youtube = require('./services/youtubeService');
 const telegram = require('./services/telegramService');
+
+// Fail-fast: tanpa secret, simpan stream key / token akan gagal diam-diam.
+if (!process.env.HYDRALIVE_SECRET && !process.env.SESSION_SECRET) {
+  console.warn('[hydra] PERINGATAN: HYDRALIVE_SECRET belum di-set — tambah channel & OAuth akan GAGAL. Isi di file .env');
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -127,15 +131,19 @@ app.get('/channels', async (req, res) => {
   res.render('channels', {
     title: 'CHANNELS', active: 'channels',
     credentials: await OAuthCredential.all(),
-    redirectUri: youtube.getRedirectUri()
+    redirectUri: youtube.getRedirectUri(),
+    error: req.query.error || null
   });
 });
 
 app.post('/oauth/credentials', async (req, res) => {
   try {
     await OAuthCredential.create(req.body);
-  } catch (e) { console.error('[oauth] create:', e.message); }
-  res.redirect('/channels');
+    res.redirect('/channels');
+  } catch (e) {
+    console.error('[oauth] create:', e.message);
+    res.redirect('/channels?error=' + encodeURIComponent(e.message));
+  }
 });
 
 app.post('/oauth/credentials/:id/delete', async (req, res) => {
@@ -221,8 +229,11 @@ app.get('/settings', async (req, res) => {
 app.post('/channels', async (req, res) => {
   try {
     await Channel.create(req.body);
-  } catch (e) { console.error('[channels] create:', e.message); }
-  res.redirect('/channels');
+    res.redirect('/channels');
+  } catch (e) {
+    console.error('[channels] create:', e.message);
+    res.redirect('/channels?error=' + encodeURIComponent(e.message));
+  }
 });
 
 app.post('/channels/:id/activate', async (req, res) => {
