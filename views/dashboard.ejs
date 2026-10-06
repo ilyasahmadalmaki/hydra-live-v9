@@ -52,6 +52,24 @@
   <% }) %>
 </div>
 
+<p class="hz-sec">ROTASI_AKTIF</p>
+<% if (!rotations.length) { %>
+  <div class="hz-card"><div class="hz-empty">_belum ada rotasi aktif — <a href="/rotations" style="color:var(--hz-green)">buat di sini_</a></div></div>
+<% } %>
+<div class="hz-cards">
+  <% rotations.forEach(function(r){ const rs = rotStatuses[r.id] || {}; %>
+    <div class="hz-card <%= rs.live ? 'live' : '' %>">
+      <div class="hz-plat"><span class="hz-dot <%= rs.live ? 'red' : '' %>"></span><%= r.name %></div>
+      <div class="hz-stat"><span>channel</span><b><%= r.channel_name %></b></div>
+      <div class="hz-stat"><span>repeat</span><b class="cy"><%= r.repeat_mode.toUpperCase() %></b></div>
+      <div class="hz-stat"><span>item</span><b><%= rs.item_count ? ((rs.current_index % rs.item_count) + 1) + '/' + rs.item_count : '—' %></b></div>
+      <div class="hz-stat"><span>status</span><b class="cy"><%= rs.live ? '● STREAMING' : (rs.inGap ? '◌ JEDA' : 'STANDBY') %></b></div>
+      <% if (rs.live) { %><div class="hz-stat"><span>uptime</span><b><%= fmtUptime(rs.uptimeSec) %></b></div><% } %>
+      <a href="/rotations" class="hz-btn go" style="text-decoration:none">⚙ KELOLA</a>
+    </div>
+  <% }) %>
+</div>
+
 <p class="hz-sec">BROADCAST_BARU</p>
 <div class="hz-card">
   <% if (!channels.length || !media.length) { %>
