@@ -12,7 +12,9 @@ const Channel = require('./models/Channel');
 const Broadcast = require('./models/Broadcast');
 const Media = require('./models/Media');
 const Settings = require('./models/Settings');
+const Rotation = require('./models/Rotation');
 const streamer = require('./services/streamingService');
+const rotationService = require('./services/rotationService');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -58,9 +60,16 @@ app.get('/', async (req, res) => {
   const statuses = {};
   broadcasts.forEach(b => { statuses[b.id] = streamer.status(b.id); });
   const liveOne = broadcasts.find(b => streamer.status(b.id).live);
+  const rotations = await Rotation.findActive();
+  const rotStatuses = {};
+  for (const r of rotations) {
+    const items = await Rotation.getItems(r.id);
+    rotStatuses[r.id] = { ...rotationService.status(r.id), item_count: items.length, current_index: r.current_index || 0 };
+  }
   res.render('dashboard', {
     title: 'DASHBOARD', active: 'dashboard',
-    broadcasts, media, statuses, liveOne: liveOne || null
+    broadcasts, media, statuses, liveOne: liveOne || null,
+    rotations, rotStatuses
   });
 });
 
@@ -149,6 +158,71 @@ app.post('/media/:id/delete', async (req, res) => {
   res.redirect('/media');
 });
 
+// ---------- Rotation (Fase 2) ----------
+app.get('/rotations', async (req, res) => {
+  const rotations = await Rotation.allDetailed();
+  const withItems = [];
+  for (const r of rotations) {
+    const items = await Rotation.getItems(r.id);
+    withItems.push({ ...r, items, rt: rotationService.status(r.id) });
+  }
+  res.render('rotations', {
+    title: 'ROTATIONS', active: 'rotations',
+    rotations: withItems, media: await Media.all()
+  });
+});
+
+app.post('/rotations', async (req, res) => {
+  try {
+    await Rotation.create(req.body);
+  } catch (e) { console.error('[rotations] create:', e.message); }
+  res.redirect('/rotations');
+});
+
+app.post('/rotations/:id/items', async (req, res) => {
+  try {
+    await Rotation.addItem(req.params.id, req.body.media_id);
+  } catch (e) { console.error('[rotations] addItem:', e.message); }
+  res.redirect('/rotations');
+});
+
+app.post('/rotations/:id/items/:itemId/delete', async (req, res) => {
+  try { await Rotation.removeItem(req.params.itemId); } catch (e) {}
+  res.redirect('/rotations');
+});
+
+app.post('/rotations/:id/toggle', async (req, res) => {
+  try {
+    const r = await Rotation.findById(req.params.id);
+    if (r) {
+      const next = r.status === 'active' ? 'paused' : 'active';
+      if (next === 'paused') await rotationService.stopItem(r, 'pause manual');
+      await Rotation.setStatus(r.id, next);
+    }
+  } catch (e) {}
+  res.redirect('/rotations');
+});
+
+app.post('/rotations/:id/delete', async (req, res) => {
+  try {
+    const r = await Rotation.findById(req.params.id);
+    if (r) await rotationService.stopItem(r, 'hapus rotasi');
+    const bc = await Broadcast.findByRotation(req.params.id);
+    if (bc) await Broadcast.remove(bc.id);
+    await Rotation.remove(req.params.id);
+  } catch (e) {}
+  res.redirect('/rotations');
+});
+
+app.get('/api/rotations/status', async (req, res) => {
+  const rotations = await Rotation.findActive();
+  res.json(rotations.map(r => ({ id: r.id, name: r.name, ...rotationService.status(r.id) })));
+});
+
+app.get('/api/rotations/:id/logs', (req, res) => {
+  res.json({ logs: rotationService.logs(req.params.id) });
+});
+
 // ---------- Settings ----------
 app.post('/settings', async (req, res) => {
   try { await Settings.set(req.body); } catch (e) {}
@@ -173,3 +247,8 @@ app.get('/api/status', (req, res) => {
 app.listen(PORT, () => {
   console.log('[hydra] control deck online → http://localhost:' + PORT);
 });
+
+// Rotation engine jalan begitu server nyala
+rotationService.init();
+
+process.on('SIGTERM', () => { rotationService.shutdown(); process.exit(0); });
