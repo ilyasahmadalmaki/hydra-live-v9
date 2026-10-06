@@ -1,14 +1,12 @@
 <nav class="hz-side">
   <% const nav = [
     ['dashboard', 'DASHBOARD', '/'],
+    ['rotations', 'ROTATIONS', '/rotations'],
     ['channels', 'CHANNELS', '/channels'],
     ['media', 'MEDIA_VAULT', '/media'],
-    ['scheduler', 'SCHEDULER', '#'],
-    ['logs', 'LOGS', '#'],
     ['settings', 'SETTINGS', '/settings'],
   ]; %>
   <% nav.forEach(function(item){ %>
     <a href="<%= item[2] %>" class="hz-nav <%= active === item[0] ? 'active' : '' %>"><span class="g">▸</span><%= item[1] %></a>
   <% }) %>
-  <div class="hz-nav-foot">FASE_2 →<br>ROTATION<br>SCHEDULER</div>
 </nav>
