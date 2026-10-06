@@ -89,9 +89,12 @@ async function start(id) {
   });
 
   proc.on('exit', (code, signal) => {
-    // exit(0) normal (mis. di-stop manual); selain itu anggap error
+    // exit(0) = normal. stop manual (flag stopping) = standby.
+    // selain itu (crash) = error.
+    const s2 = active.get(id);
+    const intentional = !!(s2 && s2.stopping);
     pushLog(id, `ffmpeg exit code=${code} signal=${signal}`);
-    cleanup(id, code === 0 || code === null ? 'standby' : 'error');
+    cleanup(id, intentional || code === 0 ? 'standby' : 'error');
   });
 
   await Broadcast.setStatus(id, 'live');
@@ -105,6 +108,7 @@ async function stop(id) {
     return { ok: true, note: 'not running' };
   }
   pushLog(id, '$ hydra stop — mengirim SIGTERM…');
+  s.stopping = true; // tandai: ini stop manual, bukan crash
   s.proc.kill('SIGTERM');
   // paksa mati kalau 5 detik masih hidup
   setTimeout(() => {
