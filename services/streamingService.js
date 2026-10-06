@@ -1,41 +1,136 @@
-// Streaming engine Fase 1: FFmpeg push ke RTMP (streamkey mode).
-// 1 broadcast = 1 proses FFmpeg = 1 video di-loop.
-// Fase 2 akan menambah: rotasi multi-item, scheduler, auto-reconnect.
+// Streaming engine: spawn FFmpeg generik + wrapper broadcast (Fase 1).
+// Fase 2: rotationService memakai spawnStream() per item rotasi.
 const { spawn } = require('child_process');
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 const Broadcast = require('../models/Broadcast');
 const Settings = require('../models/Settings');
 
-const active = new Map(); // broadcastId -> { proc, startedAt, logs[] }
 const MAX_LOGS = 200;
 
-function pushLog(id, line) {
-  const s = active.get(id);
-  if (!s) return;
+// Registry semua stream aktif: id -> handle
+const active = new Map();
+
+function pushLog(handle, line) {
   const ts = new Date().toLocaleTimeString('en-GB');
-  s.logs.push(`[${ts}] ${line}`);
-  if (s.logs.length > MAX_LOGS) s.logs.shift();
+  handle.logs.push(`[${ts}] ${line}`);
+  if (handle.logs.length > MAX_LOGS) handle.logs.shift();
 }
 
-function buildTarget(b) {
-  const base = (b.channel_rtmp_url || '').replace(/\/+$/, '');
-  const key = (b.channel_stream_key || '').replace(/^\/+/, '');
+function buildTarget(rtmpUrl, streamKey) {
+  const base = (rtmpUrl || '').replace(/\/+$/, '');
+  const key = (streamKey || '').replace(/^\/+/, '');
   return `${base}/${key}`;
 }
 
-async function cleanup(id, finalStatus) {
-  const s = active.get(id);
-  if (s) {
-    pushLog(id, `ffmpeg stopped → status: ${finalStatus}`);
-  }
-  active.delete(id);
-  try {
-    await Broadcast.setStatus(id, finalStatus === 'live' ? 'standby' : finalStatus);
-  } catch (e) { /* db mungkin sudah berubah */ }
+/**
+ * Spawn satu proses FFmpeg.
+ * opts: { input, target, bitrate, preset, loop, label }
+ * return handle { id, proc, startedAt, logs[], stop(), onExit(cb) }
+ */
+function spawnStream(id, opts) {
+  const {
+    input, target,
+    bitrate = '4500k', preset = 'veryfast',
+    loop = false, label = input
+  } = opts;
+
+  const args = [
+    '-re',
+    ...(loop ? ['-stream_loop', '-1'] : []),
+    '-i', input,
+    '-c:v', 'libx264', '-preset', preset,
+    '-b:v', bitrate, '-maxrate', bitrate, '-bufsize', '8000k',
+    '-pix_fmt', 'yuv420p', '-g', '60',
+    '-c:a', 'aac', '-b:a', '128k', '-ar', '44100',
+    '-f', 'flv', target
+  ];
+
+  const proc = spawn(ffmpegPath, args, { stdio: ['ignore', 'ignore', 'pipe'] });
+  const handle = {
+    id, proc, startedAt: Date.now(), logs: [],
+    stopping: false, exitCbs: [], lastFrame: null, exitReason: null
+  };
+  active.set(id, handle);
+
+  pushLog(handle, `$ ffmpeg -re${loop ? ' -stream_loop -1' : ''} -i "${label}"`);
+  pushLog(handle, `preset: ${preset} | video bitrate: ${bitrate}`);
+
+  proc.stderr.on('data', (chunk) => {
+    const line = chunk.toString().trim().split('\n').pop();
+    if (!line) return;
+    if (/error|failed|invalid|denied/i.test(line)) pushLog(handle, line.slice(0, 180));
+    else if (/frame=.*fps=/.test(line)) handle.lastFrame = line.slice(0, 120);
+  });
+
+  proc.on('error', (e) => {
+    pushLog(handle, 'spawn error: ' + e.message);
+    finish(id, 'error');
+  });
+
+  proc.on('exit', (code, signal) => {
+    pushLog(handle, `ffmpeg exit code=${code} signal=${signal}`);
+    const intentional = handle.stopping;
+    // code 0 = selesai natural (video habis) ; intentional = stop manual
+    finish(id, intentional || code === 0 ? 'ended' : 'error');
+  });
+
+  handle.stop = () => {
+    if (!active.has(id)) return;
+    handle.stopping = true;
+    pushLog(handle, '$ hydra stop — mengirim SIGTERM…');
+    try { proc.kill('SIGTERM'); } catch (e) {}
+    setTimeout(() => {
+      if (active.has(id)) { try { proc.kill('SIGKILL'); } catch (e) {} }
+    }, 5000).unref();
+  };
+
+  handle.onExit = (cb) => {
+    if (handle.exitReason !== null) {
+      // Proses sudah selesai sebelum callback didaftarkan (race: ffmpeg
+      // mati seketika saat startItem masih menunggu await). Panggil langsung
+      // agar retry / advance index tetap jalan.
+      try { cb(handle.exitReason, handle); } catch (e) {}
+    } else {
+      handle.exitCbs.push(cb);
+    }
+  };
+
+  return handle;
 }
 
+function finish(id, reason) {
+  const handle = active.get(id);
+  active.delete(id);
+  if (handle) {
+    handle.exitReason = reason;
+    pushLog(handle, `stream finished → ${reason}`);
+    handle.exitCbs.forEach(cb => { try { cb(reason, handle); } catch (e) {} });
+  }
+  return handle;
+}
+
+function status(id) {
+  const h = active.get(id);
+  if (!h) return { live: false };
+  return {
+    live: true,
+    uptimeSec: Math.floor((Date.now() - h.startedAt) / 1000),
+    lastFrame: h.lastFrame || null
+  };
+}
+
+function logs(id) {
+  const h = active.get(id);
+  return h ? h.logs : [];
+}
+
+function isActive(id) {
+  return active.has(id);
+}
+
+// ---------- Wrapper broadcast (Fase 1, 1 video loop) ----------
 async function start(id) {
-  if (active.has(id)) return { ok: false, error: 'broadcast already live' };
+  if (active.has('bc:' + id)) return { ok: false, error: 'broadcast already live' };
 
   const b = await Broadcast.findDetailed(id);
   if (!b) return { ok: false, error: 'broadcast not found' };
@@ -45,56 +140,27 @@ async function start(id) {
   }
 
   const settings = await Settings.getAll();
-  const bitrate = settings.video_bitrate || '4500k';
-  const preset = settings.ffmpeg_preset || 'veryfast';
-  const target = buildTarget(b);
+  const target = buildTarget(b.channel_rtmp_url, b.channel_stream_key);
 
-  const args = [
-    '-re',
-    '-stream_loop', '-1',
-    '-i', b.media_path,
-    '-c:v', 'libx264', '-preset', preset,
-    '-b:v', bitrate, '-maxrate', bitrate, '-bufsize', '8000k',
-    '-pix_fmt', 'yuv420p', '-g', '60',
-    '-c:a', 'aac', '-b:a', '128k', '-ar', '44100',
-    '-f', 'flv', target
-  ];
-
-  let proc;
+  let handle;
   try {
-    proc = spawn(ffmpegPath, args, { stdio: ['ignore', 'ignore', 'pipe'] });
+    handle = spawnStream('bc:' + id, {
+      input: b.media_path,
+      target,
+      bitrate: settings.video_bitrate || '4500k',
+      preset: settings.ffmpeg_preset || 'veryfast',
+      loop: true,
+      label: b.media_filename
+    });
   } catch (e) {
     return { ok: false, error: 'gagal menjalankan ffmpeg: ' + e.message };
   }
 
-  active.set(id, { proc, startedAt: Date.now(), logs: [] });
-  pushLog(id, `$ ffmpeg -re -stream_loop -1 -i "${b.media_filename}"`);
-  pushLog(id, `target: ${b.channel_rtmp_url}/*** (key disembunyikan)`);
-  pushLog(id, `preset: ${preset} | video bitrate: ${bitrate}`);
+  pushLog(handle, `target: ${b.channel_rtmp_url}/*** (key disembunyikan)`);
 
-  proc.stderr.on('data', (chunk) => {
-    const line = chunk.toString().trim().split('\n').pop();
-    if (!line) return;
-    if (/error|failed|invalid|denied/i.test(line)) pushLog(id, line.slice(0, 180));
-    else if (/frame=.*fps=/.test(line)) {
-      // simpan 1 baris progress terakhir sebagai heartbeat
-      const s = active.get(id);
-      if (s) s.lastFrame = line.slice(0, 120);
-    }
-  });
-
-  proc.on('error', (e) => {
-    pushLog(id, 'spawn error: ' + e.message);
-    cleanup(id, 'error');
-  });
-
-  proc.on('exit', (code, signal) => {
-    // exit(0) = normal. stop manual (flag stopping) = standby.
-    // selain itu (crash) = error.
-    const s2 = active.get(id);
-    const intentional = !!(s2 && s2.stopping);
-    pushLog(id, `ffmpeg exit code=${code} signal=${signal}`);
-    cleanup(id, intentional || code === 0 ? 'standby' : 'error');
+  handle.onExit(async (reason) => {
+    // broadcast manual: ended/error → standby/error
+    try { await Broadcast.setStatus(id, reason === 'error' ? 'error' : 'standby'); } catch (e) {}
   });
 
   await Broadcast.setStatus(id, 'live');
@@ -102,40 +168,14 @@ async function start(id) {
 }
 
 async function stop(id) {
-  const s = active.get(id);
-  if (!s) {
-    await Broadcast.setStatus(id, 'standby').catch(() => {});
-    return { ok: true, note: 'not running' };
-  }
-  pushLog(id, '$ hydra stop — mengirim SIGTERM…');
-  s.stopping = true; // tandai: ini stop manual, bukan crash
-  s.proc.kill('SIGTERM');
-  // paksa mati kalau 5 detik masih hidup
-  setTimeout(() => {
-    if (active.has(id)) {
-      try { s.proc.kill('SIGKILL'); } catch (e) {}
-    }
-  }, 5000).unref();
+  const h = active.get('bc:' + id);
+  if (h) h.stop();
+  else { try { await Broadcast.setStatus(id, 'standby'); } catch (e) {} }
   return { ok: true };
 }
 
-function status(id) {
-  const s = active.get(id);
-  if (!s) return { live: false };
-  return {
-    live: true,
-    uptimeSec: Math.floor((Date.now() - s.startedAt) / 1000),
-    lastFrame: s.lastFrame || null
-  };
-}
-
-function logs(id) {
-  const s = active.get(id);
-  return s ? s.logs : [];
-}
-
-function activeIds() {
-  return [...active.keys()];
-}
-
-module.exports = { start, stop, status, logs, activeIds };
+module.exports = {
+  spawnStream, buildTarget, status: (id) => status('bc:' + id),
+  rawStatus: status, logs: (id) => logs('bc:' + id), rawLogs: logs,
+  isActive, start, stop, activeIds: () => [...active.keys()]
+};
