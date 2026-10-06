@@ -1,0 +1,138 @@
+<%- include('partials/header', { title: 'ROTATIONS', active: 'rotations' }) %>
+<% const DAYS = ['MINGGU','SENIN','SELASA','RABU','KAMIS','JUMAT','SABTU']; %>
+<% function repeatLabel(r){ if(r.repeat_mode==='forever') return '24/7 FOREVER'; if(r.repeat_mode==='weekly') return 'WEEKLY · ' + DAYS[r.weekly_day ?? new Date().getDay()]; return 'DAILY'; } %>
+<% function windowLabel(r){ if(r.repeat_mode==='forever') return 'NONSTOP'; return (r.window_start||'?').slice(0,5) + ' – ' + (r.window_end||'?').slice(0,5) + ' WIB'; } %>
+
+<p class="hz-sec">DAFTAR_ROTASI</p>
+<% if (!rotations.length) { %>
+  <div class="hz-card"><div class="hz-empty">_belum ada rotasi. buat di bawah — setting sekali, jalan tiap hari_</div></div>
+<% } %>
+<% rotations.forEach(function(r){ %>
+  <div class="hz-card" style="margin-bottom:14px">
+    <div class="hz-plat">
+      <span class="hz-dot <%= r.rt.live ? 'red' : '' %>"></span><%= r.name %>
+      <span class="hz-tag <%= r.status==='active'?'go':'' %>" style="margin-left:8px"><%= r.status.toUpperCase() %></span>
+    </div>
+    <div class="hz-stat"><span>channel</span><b><%= r.channel_name %></b></div>
+    <div class="hz-stat"><span>repeat</span><b class="cy"><%= repeatLabel(r) %></b></div>
+    <div class="hz-stat"><span>jam tayang</span><b><%= windowLabel(r) %></b></div>
+    <div class="hz-stat"><span>gap antar item</span><b><%= r.gap_minutes %> mnt</b></div>
+    <div class="hz-stat"><span>item</span><b><%= r.items.length %> video · posisi <%= r.items.length ? (r.current_index % r.items.length) + 1 : 0 %></b></div>
+    <% if (r.rt.live) { %>
+      <div class="hz-stat"><span>status</span><b class="cy">● STREAMING</b></div>
+    <% } else if (r.rt.inGap) { %>
+      <div class="hz-stat"><span>status</span><b class="cy">◌ JEDA ANTAR ITEM</b></div>
+    <% } else if (r.rt.nextRetryIn) { %>
+      <div class="hz-stat"><span>status</span><b style="color:var(--hz-amber)">↻ RETRY <%= r.rt.nextRetryIn %> dtk (percobaan <%= r.rt.retryCount %>)</b></div>
+    <% } %>
+
+    <% if (r.items.length) { %>
+      <table class="hz-table" style="margin-top:10px">
+        <thead><tr><th>#</th><th>VIDEO</th><th>AKSI</th></tr></thead>
+        <tbody>
+          <% r.items.forEach(function(it, i){ %>
+            <tr>
+              <td><%= i + 1 %></td>
+              <td class="hz-mono-sm"><b><%= it.media_filename %></b></td>
+              <td>
+                <form method="POST" action="/rotations/<%= r.id %>/items/<%= it.id %>/delete">
+                  <button class="hz-btn sm ghost" type="submit">✕</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+
+    <div class="hz-btnrow" style="margin-top:12px">
+      <form method="POST" action="/rotations/<%= r.id %>/items" class="hz-form hz-form-row" style="flex:1">
+        <div class="hz-field" style="flex:1;min-width:160px">
+          <select class="hz-select" name="media_id" required>
+            <option value="">— pilih video —</option>
+            <% media.forEach(function(m){ %>
+              <option value="<%= m.id %>"><%= m.filename %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="hz-field hz-field-btn">
+          <button class="hz-btn go sm" type="submit">+ ITEM</button>
+        </div>
+      </form>
+      <form method="POST" action="/rotations/<%= r.id %>/toggle">
+        <button class="hz-btn sm <%= r.status==='active' ? '' : 'go' %>" type="submit"><%= r.status==='active' ? '❚❚ PAUSE' : '▶ RESUME' %></button>
+      </form>
+      <form method="POST" action="/rotations/<%= r.id %>/delete" onsubmit="return confirm('Hapus rotasi <%= r.name %>?')">
+        <button class="hz-btn sm ghost" type="submit">✕ HAPUS</button>
+      </form>
+    </div>
+  </div>
+<% }) %>
+
+<p class="hz-sec" style="margin-top:20px">ROTASI_BARU</p>
+<div class="hz-card">
+  <form method="POST" action="/rotations" class="hz-form">
+    <div class="hz-field">
+      <label>NAMA ROTASI</label>
+      <input class="hz-input" name="name" required placeholder="Rain 24/7 — Channel Utama">
+    </div>
+    <div class="hz-field">
+      <label>CHANNEL</label>
+      <select class="hz-select" name="channel_id" required>
+        <% channels.forEach(function(c){ %>
+          <option value="<%= c.id %>" <%= activeChannel && activeChannel.id===c.id?'selected':'' %>><%= c.name %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div class="hz-field">
+      <label>REPEAT MODE</label>
+      <select class="hz-select" name="repeat_mode" id="hzRepeat">
+        <option value="daily">DAILY — tiap hari di jam yang sama</option>
+        <option value="weekly">WEEKLY — tiap minggu di hari yang sama</option>
+        <option value="forever">FOREVER — 24/7 nonstop</option>
+      </select>
+    </div>
+    <div class="hz-form-row" id="hzWindowRow" style="display:flex;gap:14px">
+      <div class="hz-field" style="flex:1">
+        <label>JAM MULAI</label>
+        <input class="hz-input" type="time" name="window_start" value="08:00">
+      </div>
+      <div class="hz-field" style="flex:1">
+        <label>JAM SELESAI</label>
+        <input class="hz-input" type="time" name="window_end" value="22:00">
+      </div>
+    </div>
+    <div class="hz-field" id="hzDayRow" style="display:none">
+      <label>HARI</label>
+      <select class="hz-select" name="weekly_day">
+        <% DAYS.forEach(function(d,i){ %>
+          <option value="<%= i %>"><%= d %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div class="hz-field">
+      <label>GAP ANTAR VIDEO (menit)</label>
+      <input class="hz-input" type="number" name="gap_minutes" value="0" min="0" max="120">
+    </div>
+    <div class="hz-field">
+      <button class="hz-btn go" type="submit">+ BUAT ROTASI</button>
+    </div>
+  </form>
+  <p class="hz-hint">▸ Setting sekali — engine cek tiap 30 detik dan jalan otomatis di jam yang ditentukan.<br>
+  ▸ Tiap rotasi = <b>1 broadcast persistent</b> (hemat kuota API). Ganti item = restart encoder ke URL yang sama.</p>
+</div>
+
+<script>
+  (function(){
+    var sel = document.getElementById('hzRepeat');
+    var win = document.getElementById('hzWindowRow');
+    var day = document.getElementById('hzDayRow');
+    function upd(){
+      win.style.display = sel.value === 'forever' ? 'none' : 'flex';
+      day.style.display = sel.value === 'weekly' ? 'block' : 'none';
+    }
+    sel.addEventListener('change', upd); upd();
+  })();
+</script>
+
+<%- include('partials/footer') %>
