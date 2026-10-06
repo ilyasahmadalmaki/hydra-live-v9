@@ -38,6 +38,12 @@
       <% if (st.live) { %>
         <div class="hz-stat"><span>uptime</span><b><%= fmtUptime(st.uptimeSec) %></b></div>
       <% } %>
+      <% if (b.viewers) { %>
+        <div class="hz-stat"><span>viewers</span><b class="cy">👁 <%= b.viewers %></b></div>
+      <% } %>
+      <% if (b.health) { %>
+        <div class="hz-stat"><span>health</span><b class="<%= b.health==='good' ? 'cy' : '' %>" <%= b.health!=='good' ? 'style="color:var(--hz-amber)"' : '' %>><%= b.health.toUpperCase() %></b></div>
+      <% } %>
       <div class="hz-btnrow">
         <% if (st.live) { %>
           <button class="hz-btn" data-stop="<%= b.id %>">■ STOP</button>
