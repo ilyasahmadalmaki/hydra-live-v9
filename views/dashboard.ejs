@@ -1,0 +1,52 @@
+<%- include('partials/header', { title: 'DASHBOARD', active: 'dashboard' }) %>
+
+<p class="hz-sec">ACTIVE_TRANSMISSIONS</p>
+<div class="hz-cards">
+  <div class="hz-card live">
+    <div class="hz-plat"><span class="hz-dot red"></span>YOUTUBE</div>
+    <div class="hz-stat"><span>bitrate</span><b class="cy">6000 kbps</b></div>
+    <div class="hz-stat"><span>uptime</span><b>04:12:33</b></div>
+    <div class="hz-stat"><span>viewers</span><b class="cy">1,284</b></div>
+    <div class="hz-stat"><span>dropped</span><b>0.02%</b></div>
+    <span class="hz-btn">■ TERMINATE</span>
+  </div>
+  <div class="hz-card">
+    <div class="hz-plat"><span class="hz-dot"></span>FACEBOOK</div>
+    <div class="hz-stat"><span>status</span><b class="cy">STANDBY</b></div>
+    <div class="hz-stat"><span>preset</span><b>1080p60</b></div>
+    <div class="hz-stat"><span>next_sched</span><b>21:00 WIB</b></div>
+    <span class="hz-btn go">▶ DEPLOY</span>
+  </div>
+  <div class="hz-card">
+    <div class="hz-plat"><span class="hz-dot"></span>RTMP_CUSTOM</div>
+    <div class="hz-stat"><span>status</span><b class="cy">STANDBY</b></div>
+    <div class="hz-stat"><span>target</span><b>rtmp://live…</b></div>
+    <div class="hz-stat"><span>latency</span><b>—</b></div>
+    <span class="hz-btn go">▶ DEPLOY</span>
+  </div>
+</div>
+
+<div class="hz-panels">
+  <div>
+    <p class="hz-sec">SYSTEM_DIAG</p>
+    <div class="hz-card">
+      <div class="hz-stat"><span>cpu_load</span><b class="cy" id="hzCpu">—</b></div>
+      <div class="hz-bar"><i id="hzCpuBar" style="width:0%"></i></div>
+      <div class="hz-stat"><span>memory</span><b class="cy" id="hzMem">—</b></div>
+      <div class="hz-bar"><i id="hzMemBar" style="width:0%"></i></div>
+      <div class="hz-stat"><span>encoder</span><b>libx264 veryfast</b></div>
+      <div class="hz-stat"><span>ffmpeg</span><b class="cy">bundled</b></div>
+    </div>
+  </div>
+  <div>
+    <p class="hz-sec">LIVE_TERMINAL</p>
+    <div class="hz-term" id="hzTerm">
+      <div><span class="p">$</span> hydra init <span class="dim"># control deck v9</span></div>
+      <div><span class="cy">[ok]</span> database locked <span class="dim">data/hydra.db</span></div>
+      <div><span class="cy">[ok]</span> ffmpeg binary resolved</div>
+      <div><span class="p">$</span> <span class="hz-cursor"></span></div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>
