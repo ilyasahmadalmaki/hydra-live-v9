@@ -1,5 +1,19 @@
 const { randomUUID } = require('crypto');
 const { run, get, all } = require('../db/helpers');
+const { decrypt } = require('../utils/encryption');
+
+function hydrate(row) {
+  if (!row) return row;
+  try { row.yt_stream_key = decrypt(row.yt_stream_key); } catch (e) {}
+  try { row.stream_key = decrypt(row.stream_key); } catch (e) {}
+  return row;
+}
+
+const CHANNEL_JOIN = `r.*, c.name AS channel_name, c.mode AS mode,
+  c.rtmp_url AS channel_rtmp_url, c.stream_key AS channel_stream_key,
+  c.oauth_credential_id AS oauth_credential_id,
+  c.yt_broadcast_id AS yt_broadcast_id, c.yt_stream_id AS yt_stream_id,
+  c.yt_ingestion_url AS yt_ingestion_url, c.yt_stream_key AS yt_stream_key`;
 
 async function create({ channel_id, name, repeat_mode, window_start, window_end, weekly_day, gap_minutes }) {
   const id = randomUUID();
@@ -16,10 +30,10 @@ async function create({ channel_id, name, repeat_mode, window_start, window_end,
 
 function findById(id) {
   return get(
-    `SELECT r.*, c.name AS channel_name, c.rtmp_url AS channel_rtmp_url, c.stream_key AS channel_stream_key
+    `SELECT ${CHANNEL_JOIN}
      FROM rotations r JOIN channels c ON c.id = r.channel_id WHERE r.id = ?`,
     [id]
-  );
+  ).then(hydrate);
 }
 
 function allDetailed() {
@@ -33,10 +47,10 @@ function allDetailed() {
 
 function findActive() {
   return all(
-    `SELECT r.*, c.name AS channel_name, c.rtmp_url AS channel_rtmp_url, c.stream_key AS channel_stream_key
+    `SELECT ${CHANNEL_JOIN}
      FROM rotations r JOIN channels c ON c.id = r.channel_id
      WHERE r.status = 'active'`
-  );
+  ).then(rows => rows.map(hydrate));
 }
 
 function getItems(rotationId) {
