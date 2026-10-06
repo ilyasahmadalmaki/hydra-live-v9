@@ -225,3 +225,10 @@ input[type="file"].hz-input{padding:8px 12px}
   margin-top:18px;padding:12px 18px;font-size:10px;letter-spacing:2px;
   color:var(--hz-faint);border-top:1px dashed var(--hz-line);line-height:1.9;
 }
+
+/* ============ FASE 3 additions ============ */
+.hz-code{
+  font-size:11px;background:#020503;border:1px solid var(--hz-line-bright);
+  color:var(--hz-cyan);padding:10px 12px;border-radius:4px;margin:8px 0;
+  word-break:break-all;user-select:all;
+}
