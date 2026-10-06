@@ -1,5 +1,9 @@
 <%- include('partials/header', { title: 'CHANNELS', active: 'channels' }) %>
 
+<% if (typeof error !== 'undefined' && error) { %>
+  <div class="hz-card" style="border-color:var(--hz-pink);color:var(--hz-pink);margin-bottom:12px">// ERROR: <%= error %></div>
+<% } %>
+
 <p class="hz-sec">DAFTAR_CHANNEL</p>
 <div class="hz-card">
   <% if (!channels.length) { %>
