@@ -128,8 +128,21 @@ app.get('/', async (req, res) => {
 
 // ---------- YouTube OAuth (Fase 3) ----------
 app.get('/channels', async (req, res) => {
+  const rotations = await Rotation.allDetailed().catch(() => []);
+  const rotByChannel = {};
+  const rotStatus = {};
+  for (const r of rotations) {
+    if (!rotByChannel[r.channel_id]) {
+      rotByChannel[r.channel_id] = r;
+      try { rotStatus[r.id] = rotationService.status(r.id); } catch (e) {}
+    }
+  }
+  const allChannels = await Channel.all().catch(() => []);
   res.render('channels', {
-    title: 'CHANNELS', active: 'channels',
+    title: 'LIVE', active: 'channels',
+    media: await Media.all().catch(() => []),
+    apiChannels: allChannels.filter(c => c.mode === 'api'),
+    rotByChannel, rotStatus,
     credentials: await OAuthCredential.all(),
     redirectUri: youtube.getRedirectUri(),
     error: req.query.error || null
@@ -226,12 +239,59 @@ app.get('/settings', async (req, res) => {
 });
 
 // ---------- Channel API ----------
-app.post('/channels', async (req, res) => {
+// TAMBAH LIVE lengkap: 1 sumber stream + daftar video + 1 jadwal (opsional).
+// Membuat channel (utk streamkey) + rotation + items dalam satu aksi.
+app.post('/lives', async (req, res) => {
   try {
-    await Channel.create(req.body);
+    const b = req.body;
+    const name = (b.name || '').trim();
+    if (!name) throw new Error('nama live wajib diisi');
+
+    // kumpulkan video tercentang + urutannya (validasi dulu sebelum buat apa pun)
+    const vids = [];
+    for (const k of Object.keys(b)) {
+      const m = k.match(/^vid_(.+)$/);
+      if (m && b[k]) {
+        const ord = parseInt(b['ord_' + m[1]], 10);
+        vids.push({ id: m[1], ord: isNaN(ord) ? 999 : ord });
+      }
+    }
+    vids.sort((x, y) => x.ord - y.ord);
+
+    const sched = b.schedule_mode || 'manual';
+    if (sched !== 'manual' && !vids.length) {
+      throw new Error('pilih minimal 1 video untuk mode terjadwal');
+    }
+    if (b.source !== 'api' && (!b.rtmp_url || !b.stream_key)) {
+      throw new Error('RTMP URL & stream key wajib diisi');
+    }
+    if (b.source === 'api' && !b.api_channel_id) {
+      throw new Error('pilih live YouTube API yang sudah terhubung');
+    }
+
+    let channel;
+    if (b.source === 'api') {
+      channel = await Channel.findById(b.api_channel_id);
+      if (!channel) throw new Error('live API tidak ditemukan');
+    } else {
+      channel = await Channel.create({ name, rtmp_url: b.rtmp_url, stream_key: b.stream_key });
+    }
+
+    if (sched !== 'manual') {
+      const rot = await Rotation.create({
+        channel_id: channel.id,
+        name,
+        repeat_mode: sched,
+        window_start: (sched === 'daily' || sched === 'weekly') ? (b.window_start || null) : null,
+        window_end: (sched === 'daily' || sched === 'weekly') ? (b.window_end || null) : null,
+        weekly_day: sched === 'weekly' ? b.weekly_day : null,
+        gap_minutes: b.gap_minutes || 0,
+      });
+      for (const v of vids) await Rotation.addItem(rot.id, v.id);
+    }
     res.redirect('/channels');
   } catch (e) {
-    console.error('[channels] create:', e.message);
+    console.error('[lives] create:', e.message);
     res.redirect('/channels?error=' + encodeURIComponent(e.message));
   }
 });
