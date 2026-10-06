@@ -1,40 +1,58 @@
-<%- include('partials/header', { title: 'CHANNELS', active: 'channels' }) %>
+<%- include('partials/header', { title: 'LIVE', active: 'channels' }) %>
+<% const DAYS = ['MINGGU','SENIN','SELASA','RABU','KAMIS','JUMAT','SABTU']; %>
 
 <% if (typeof error !== 'undefined' && error) { %>
   <div class="hz-card" style="border-color:var(--hz-pink);color:var(--hz-pink);margin-bottom:12px">// ERROR: <%= error %></div>
 <% } %>
 
-<p class="hz-sec">DAFTAR_CHANNEL</p>
+<p class="hz-sec">DAFTAR_LIVE</p>
 <div class="hz-card">
   <% if (!channels.length) { %>
-    <div class="hz-empty">_belum ada channel. tambahkan di bawah_</div>
+    <div class="hz-empty">_belum ada live. buat di bawah_</div>
   <% } else { %>
     <table class="hz-table">
-      <thead><tr><th>NAMA</th><th>MODE</th><th>YOUTUBE</th><th>RTMP / KEY</th><th>STATUS</th><th>AKSI</th></tr></thead>
+      <thead><tr><th>NAMA</th><th>SUMBER</th><th>VIDEO</th><th>JADWAL</th><th>STATUS</th><th>AKSI</th></tr></thead>
       <tbody>
         <% channels.forEach(function(c){ %>
+          <% var r = (typeof rotByChannel !== 'undefined' && rotByChannel[c.id]) || null; %>
+          <% var st = (r && typeof rotStatus !== 'undefined' && rotStatus[r.id]) || null; %>
           <tr>
-            <td><b><%= c.name %></b></td>
+            <td><b><%= c.name %></b>
+              <% if (c.is_active) { %><span class="hz-tag go" style="margin-left:6px">AKTIF</span><% } %>
+            </td>
             <td>
               <% if (c.mode === 'api') { %><span class="hz-tag go">YT-API</span><% } else { %><span class="hz-tag">STREAMKEY</span><% } %>
+              <div class="hz-mono-sm hz-dim" style="margin-top:4px">
+                <% if (c.mode === 'api') { %>
+                  <%= c.youtube_channel_name || 'via API' %>
+                  <form method="POST" action="/channels/<%= c.id %>/unlink-youtube" style="margin-top:4px" onsubmit="return confirm('Putuskan hubungan YouTube API? Live kembali ke mode streamkey.')">
+                    <button class="hz-btn sm ghost" type="submit">UNLINK</button>
+                  </form>
+                <% } else { %>
+                  <%= (c.rtmp_url || '—').replace('rtmp://','') %><br><%= c.stream_key ? c.stream_key.slice(0,4) + '••••••••' : '—' %>
+                <% } %>
+              </div>
             </td>
+            <td class="hz-mono-sm"><% if (r) { %><%= r.item_count %> video<% } else { %><span class="hz-dim">—</span><% } %></td>
             <td class="hz-mono-sm">
-              <% if (c.youtube_channel_name) { %>
-                <%= c.youtube_channel_name %>
-                <form method="POST" action="/channels/<%= c.id %>/unlink-youtube" style="margin-top:4px" onsubmit="return confirm('Putuskan hubungan YouTube API? Channel kembali ke streamkey mode.')">
-                  <button class="hz-btn sm ghost" type="submit">UNLINK</button>
-                </form>
-              <% } else { %><span class="hz-dim">—</span><% } %>
+              <% if (!r) { %><span class="hz-dim">MANUAL</span>
+              <% } else if (r.repeat_mode === 'forever') { %>24/7 NONSTOP
+              <% } else if (r.repeat_mode === 'weekly') { %><%= r.window_start %>–<%= r.window_end %><br><%= DAYS[r.weekly_day] %>
+              <% } else { %><%= r.window_start %>–<%= r.window_end %><br>HARIAN<% } %>
+              <% if (r && r.gap_minutes) { %><br><span class="hz-dim">jeda <%= r.gap_minutes %> mnt</span><% } %>
             </td>
-            <td class="hz-mono-sm"><%= c.mode === 'api' ? '<span class="hz-dim">via API</span>' : ((c.rtmp_url || '—') + '<br>' + (c.stream_key ? c.stream_key.slice(0,4) + '••••••••' : '—')) %></td>
-            <td><%= c.is_active ? '<span class="hz-tag go">AKTIF</span>' : '<span class="hz-dim">—</span>' %></td>
+            <td>
+              <% if (st && st.live) { %><span class="hz-tag go">🔴 LIVE</span>
+              <% } else if (st && st.inGap) { %><span class="hz-tag">JEDA</span>
+              <% } else { %><span class="hz-dim">STANDBY</span><% } %>
+            </td>
             <td class="hz-acts">
               <% if (!c.is_active) { %>
                 <form method="POST" action="/channels/<%= c.id %>/activate">
                   <button class="hz-btn go sm" type="submit">AKTIFKAN</button>
                 </form>
               <% } %>
-              <form method="POST" action="/channels/<%= c.id %>/delete" onsubmit="return confirm('Hapus channel <%= c.name %>?')">
+              <form method="POST" action="/channels/<%= c.id %>/delete" onsubmit="return confirm('Hapus live <%= c.name %>?')">
                 <button class="hz-btn sm" type="submit">✕</button>
               </form>
             </td>
@@ -45,28 +63,114 @@
   <% } %>
 </div>
 
-<p class="hz-sec" style="margin-top:20px">TAMBAH_CHANNEL <span class="hz-dim">(streamkey)</span></p>
+<p class="hz-sec" style="margin-top:20px">TAMBAH_LIVE <span class="hz-dim">(lengkap: sumber + video + jadwal)</span></p>
 <div class="hz-card">
-  <form method="POST" action="/channels" class="hz-form">
+  <form method="POST" action="/lives" class="hz-form" id="hzLiveForm">
     <div class="hz-field">
-      <label>NAMA CHANNEL</label>
-      <input class="hz-input" name="name" required placeholder="Rain Sounds ID">
+      <label>NAMA LIVE</label>
+      <input class="hz-input" name="name" required placeholder="Rain Sounds 24/7">
     </div>
+
     <div class="hz-field">
-      <label>RTMP URL <span class="hz-dim">(YouTube Studio → Stream settings)</span></label>
-      <input class="hz-input" name="rtmp_url" required placeholder="rtmp://a.rtmp.youtube.com/live2">
+      <label>SUMBER STREAM</label>
+      <div style="display:flex;gap:16px;margin-top:6px">
+        <label style="display:flex;gap:6px;align-items:center;cursor:pointer">
+          <input type="radio" name="source" value="streamkey" checked> STREAMKEY <span class="hz-dim">(manual)</span>
+        </label>
+        <label style="display:flex;gap:6px;align-items:center;cursor:pointer">
+          <input type="radio" name="source" value="api"> YOUTUBE API <span class="hz-dim">(hemat kuota)</span>
+        </label>
+      </div>
     </div>
-    <div class="hz-field">
-      <label>STREAM KEY <span class="hz-dim">(tersimpan terenkripsi)</span></label>
-      <input class="hz-input" type="password" name="stream_key" required placeholder="xxxx-xxxx-xxxx-xxxx" autocomplete="off">
+
+    <div id="hzSrcKey">
+      <div class="hz-field">
+        <label>RTMP URL <span class="hz-dim">(YouTube Studio → Stream settings)</span></label>
+        <input class="hz-input" name="rtmp_url" placeholder="rtmp://a.rtmp.youtube.com/live2">
+      </div>
+      <div class="hz-field">
+        <label>STREAM KEY <span class="hz-dim">(tersimpan terenkripsi)</span></label>
+        <input class="hz-input" type="password" name="stream_key" placeholder="xxxx-xxxx-xxxx-xxxx" autocomplete="off">
+      </div>
     </div>
+
+    <div id="hzSrcApi" style="display:none">
+      <div class="hz-field">
+        <label>PILIH LIVE YT-API <span class="hz-dim">(yang sudah terhubung)</span></label>
+        <% if (typeof apiChannels !== 'undefined' && apiChannels.length) { %>
+          <select class="hz-select" name="api_channel_id">
+            <% apiChannels.forEach(function(c){ %>
+              <option value="<%= c.id %>"><%= c.youtube_channel_name || c.name %></option>
+            <% }) %>
+          </select>
+        <% } else { %>
+          <p class="hz-hint" style="margin:0">_belum ada live YT-API — hubungkan dulu di bawah (YOUTUBE_API)_</p>
+        <% } %>
+      </div>
+    </div>
+
     <div class="hz-field">
-      <button class="hz-btn go" type="submit">+ TAMBAH</button>
+      <label>PILIH VIDEO <span class="hz-dim">(centang + atur urutan)</span></label>
+      <% if (typeof media !== 'undefined' && media.length) { %>
+        <div class="hz-vidpick">
+          <% media.forEach(function(m, i){ %>
+            <label class="hz-vidrow">
+              <input type="checkbox" name="vid_<%= m.id %>" value="on">
+              <input type="number" name="ord_<%= m.id %>" value="<%= i+1 %>" min="1" class="hz-input hz-ord">
+              <span class="hz-mono-sm"><%= m.filename %></span>
+            </label>
+          <% }) %>
+        </div>
+      <% } else { %>
+        <p class="hz-hint" style="margin:0">_vault masih kosong — upload dulu di MEDIA_VAULT_</p>
+      <% } %>
+    </div>
+
+    <div class="hz-field">
+      <label>MODE JADWAL</label>
+      <select class="hz-select" name="schedule_mode" id="hzSchedMode">
+        <option value="forever">24/7 NONSTOP — loop terus tanpa henti</option>
+        <option value="daily">TERJADWAL HARIAN — tiap hari di jam yang sama</option>
+        <option value="weekly">TERJADWAL MINGGUAN — tiap minggu di hari &amp; jam yang sama</option>
+        <option value="manual">MANUAL — tanpa jadwal, start manual dari dashboard</option>
+      </select>
+    </div>
+
+    <div class="hz-form-row" id="hzSchedWin" style="display:none;gap:14px">
+      <div class="hz-field" style="flex:1">
+        <label>JAM MULAI</label>
+        <input class="hz-input" type="time" name="window_start" value="08:00">
+      </div>
+      <div class="hz-field" style="flex:1">
+        <label>JAM SELESAI</label>
+        <input class="hz-input" type="time" name="window_end" value="22:00">
+      </div>
+    </div>
+
+    <div class="hz-field" id="hzSchedDay" style="display:none">
+      <label>HARI</label>
+      <select class="hz-select" name="weekly_day">
+        <% DAYS.forEach(function(d,i){ %>
+          <option value="<%= i %>"><%= d %></option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div class="hz-field" id="hzSchedGap">
+      <label>GAP ANTAR VIDEO (menit)</label>
+      <input class="hz-input" type="number" name="gap_minutes" value="0" min="0" max="120" style="max-width:140px">
+    </div>
+
+    <div class="hz-field">
+      <button class="hz-btn go" type="submit">+ BUAT LIVE</button>
     </div>
   </form>
+  <p class="hz-hint">▸ 1 live = 1 sumber stream + daftar video + 1 jadwal. Setting sekali — engine cek tiap 30 detik dan jalan otomatis.<br>
+  ▸ Mode YT-API = <b>1 broadcast persistent</b> (hemat kuota). Ganti video = restart encoder ke URL yang sama.<br>
+  ▸ Mode MANUAL: live dibuat tanpa jadwal — start manual dari DASHBOARD.</p>
 </div>
 
-<p class="hz-sec" style="margin-top:20px">YOUTUBE_API <span class="hz-dim">(OAuth — Fase 3)</span></p>
+<p class="hz-sec" style="margin-top:20px">YOUTUBE_API <span class="hz-dim">(OAuth)</span></p>
 <div class="hz-card">
   <p class="hz-hint" style="margin-top:0">▸ Redirect URI yang harus didaftarkan di Google Cloud Console → Credentials → OAuth client:</p>
   <div class="hz-code"><%= redirectUri %></div>
@@ -112,5 +216,35 @@
     </div>
   </form>
 </div>
+
+<script>
+(function(){
+  var mode = document.getElementById('hzSchedMode');
+  var win = document.getElementById('hzSchedWin');
+  var day = document.getElementById('hzSchedDay');
+  var gap = document.getElementById('hzSchedGap');
+  var srcKey = document.getElementById('hzSrcKey');
+  var srcApi = document.getElementById('hzSrcApi');
+  var keyInputs = srcKey.querySelectorAll('input');
+  function updSched(){
+    var v = mode.value;
+    var timed = (v === 'daily' || v === 'weekly');
+    win.style.display = timed ? 'flex' : 'none';
+    day.style.display = (v === 'weekly') ? 'block' : 'none';
+    gap.style.display = (v === 'manual') ? 'none' : 'block';
+  }
+  function updSrc(){
+    var v = document.querySelector('input[name="source"]:checked').value;
+    srcKey.style.display = v === 'streamkey' ? 'block' : 'none';
+    srcApi.style.display = v === 'api' ? 'block' : 'none';
+    keyInputs.forEach(function(i){ i.required = (v === 'streamkey'); });
+  }
+  mode.addEventListener('change', updSched);
+  document.querySelectorAll('input[name="source"]').forEach(function(r){
+    r.addEventListener('change', updSrc);
+  });
+  updSched(); updSrc();
+})();
+</script>
 
 <%- include('partials/footer') %>
