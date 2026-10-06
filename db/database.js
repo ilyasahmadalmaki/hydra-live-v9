@@ -91,6 +91,14 @@ db.serialize(() => {
   });
 
   // ---- Fase 3: YouTube API (OAuth per channel) ----
+  db.run(`CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    username TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'admin',
+    created_at TEXT DEFAULT (datetime('now'))
+  )`);
+
   db.run(`CREATE TABLE IF NOT EXISTS oauth_credentials (
     id TEXT PRIMARY KEY,
     label TEXT NOT NULL,
