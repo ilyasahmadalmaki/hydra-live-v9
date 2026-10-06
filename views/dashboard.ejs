@@ -1,32 +1,91 @@
 <%- include('partials/header', { title: 'DASHBOARD', active: 'dashboard' }) %>
 
-<p class="hz-sec">ACTIVE_TRANSMISSIONS</p>
+<% function fmtUptime(s){ const h=String(Math.floor(s/3600)).padStart(2,'0'); const m=String(Math.floor(s%3600/60)).padStart(2,'0'); const ss=String(s%60).padStart(2,'0'); return h+':'+m+':'+ss; } %>
+<% function fmtSize(b){ if(!b) return '—'; const u=['B','KB','MB','GB']; let i=0; while(b>=1024&&i<3){b/=1024;i++;} return b.toFixed(1)+' '+u[i]; } %>
+
+<p class="hz-sec">CHANNEL_AKTIF</p>
 <div class="hz-cards">
-  <div class="hz-card live">
-    <div class="hz-plat"><span class="hz-dot red"></span>YOUTUBE</div>
-    <div class="hz-stat"><span>bitrate</span><b class="cy">6000 kbps</b></div>
-    <div class="hz-stat"><span>uptime</span><b>04:12:33</b></div>
-    <div class="hz-stat"><span>viewers</span><b class="cy">1,284</b></div>
-    <div class="hz-stat"><span>dropped</span><b>0.02%</b></div>
-    <span class="hz-btn">■ TERMINATE</span>
-  </div>
-  <div class="hz-card">
-    <div class="hz-plat"><span class="hz-dot"></span>FACEBOOK</div>
-    <div class="hz-stat"><span>status</span><b class="cy">STANDBY</b></div>
-    <div class="hz-stat"><span>preset</span><b>1080p60</b></div>
-    <div class="hz-stat"><span>next_sched</span><b>21:00 WIB</b></div>
-    <span class="hz-btn go">▶ DEPLOY</span>
-  </div>
-  <div class="hz-card">
-    <div class="hz-plat"><span class="hz-dot"></span>RTMP_CUSTOM</div>
-    <div class="hz-stat"><span>status</span><b class="cy">STANDBY</b></div>
-    <div class="hz-stat"><span>target</span><b>rtmp://live…</b></div>
-    <div class="hz-stat"><span>latency</span><b>—</b></div>
-    <span class="hz-btn go">▶ DEPLOY</span>
-  </div>
+  <% if (activeChannel) { %>
+    <div class="hz-card">
+      <div class="hz-plat"><span class="hz-dot"></span><%= activeChannel.name %></div>
+      <div class="hz-stat"><span>mode</span><b class="cy">STREAMKEY</b></div>
+      <div class="hz-stat"><span>rtmp</span><b><%= activeChannel.rtmp_url || '—' %></b></div>
+      <div class="hz-stat"><span>key</span><b>••••••••</b></div>
+      <a href="/channels" class="hz-btn go" style="text-decoration:none">⚙ KELOLA</a>
+    </div>
+  <% } else { %>
+    <div class="hz-card">
+      <div class="hz-plat"><span class="hz-dot red"></span>NO CHANNEL</div>
+      <div class="hz-stat"><span>status</span><b>belum ada channel terdaftar</b></div>
+      <a href="/channels" class="hz-btn go" style="text-decoration:none">+ TAMBAH CHANNEL</a>
+    </div>
+  <% } %>
 </div>
 
-<div class="hz-panels">
+<p class="hz-sec">BROADCASTS</p>
+<% if (!broadcasts.length) { %>
+  <div class="hz-empty">_belum ada broadcast. buat di bawah_</div>
+<% } %>
+<div class="hz-cards">
+  <% broadcasts.forEach(function(b){ const st = statuses[b.id] || { live:false }; %>
+    <div class="hz-card <%= st.live ? 'live' : '' %>">
+      <div class="hz-plat">
+        <span class="hz-dot <%= st.live ? 'red' : '' %>"></span><%= b.title %>
+      </div>
+      <div class="hz-stat"><span>channel</span><b><%= b.channel_name %></b></div>
+      <div class="hz-stat"><span>media</span><b><%= b.media_filename || '—' %></b></div>
+      <div class="hz-stat"><span>status</span><b class="cy"><%= st.live ? 'LIVE' : b.status.toUpperCase() %></b></div>
+      <% if (st.live) { %>
+        <div class="hz-stat"><span>uptime</span><b><%= fmtUptime(st.uptimeSec) %></b></div>
+      <% } %>
+      <div class="hz-btnrow">
+        <% if (st.live) { %>
+          <button class="hz-btn" data-stop="<%= b.id %>">■ STOP</button>
+        <% } else { %>
+          <button class="hz-btn go" data-start="<%= b.id %>">▶ DEPLOY</button>
+        <% } %>
+        <form method="POST" action="/broadcasts/<%= b.id %>/delete" onsubmit="return confirm('Hapus broadcast ini?')">
+          <button class="hz-btn ghost" type="submit">✕</button>
+        </form>
+      </div>
+    </div>
+  <% }) %>
+</div>
+
+<p class="hz-sec">BROADCAST_BARU</p>
+<div class="hz-card">
+  <% if (!channels.length || !media.length) { %>
+    <div class="hz-empty">_butuh minimal 1 channel &amp; 1 video di vault_</div>
+  <% } else { %>
+    <form method="POST" action="/broadcasts" class="hz-form hz-form-row">
+      <div class="hz-field">
+        <label>JUDUL</label>
+        <input class="hz-input" name="title" required placeholder="🔴 Rain Sounds 24/7">
+      </div>
+      <div class="hz-field">
+        <label>CHANNEL</label>
+        <select class="hz-select" name="channel_id">
+          <% channels.forEach(function(c){ %>
+            <option value="<%= c.id %>" <%= activeChannel && activeChannel.id===c.id ? 'selected':'' %>><%= c.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="hz-field">
+        <label>VIDEO</label>
+        <select class="hz-select" name="media_id">
+          <% media.forEach(function(m){ %>
+            <option value="<%= m.id %>"><%= m.filename %> (<%= fmtSize(m.size) %>)</option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="hz-field hz-field-btn">
+        <button class="hz-btn go" type="submit">+ CREATE</button>
+      </div>
+    </form>
+  <% } %>
+</div>
+
+<div class="hz-panels" style="margin-top:20px">
   <div>
     <p class="hz-sec">SYSTEM_DIAG</p>
     <div class="hz-card">
@@ -34,13 +93,13 @@
       <div class="hz-bar"><i id="hzCpuBar" style="width:0%"></i></div>
       <div class="hz-stat"><span>memory</span><b class="cy" id="hzMem">—</b></div>
       <div class="hz-bar"><i id="hzMemBar" style="width:0%"></i></div>
-      <div class="hz-stat"><span>encoder</span><b>libx264 veryfast</b></div>
+      <div class="hz-stat"><span>encoder</span><b>libx264</b></div>
       <div class="hz-stat"><span>ffmpeg</span><b class="cy">bundled</b></div>
     </div>
   </div>
   <div>
     <p class="hz-sec">LIVE_TERMINAL</p>
-    <div class="hz-term" id="hzTerm">
+    <div class="hz-term" id="hzTerm" data-live="<%= liveOne ? liveOne.id : '' %>">
       <div><span class="p">$</span> hydra init <span class="dim"># control deck v9</span></div>
       <div><span class="cy">[ok]</span> database locked <span class="dim">data/hydra.db</span></div>
       <div><span class="cy">[ok]</span> ffmpeg binary resolved</div>
