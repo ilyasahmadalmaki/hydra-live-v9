@@ -50,4 +50,23 @@ function remove(id) {
   return run('DELETE FROM broadcasts WHERE id = ?', [id]);
 }
 
-module.exports = { create, allDetailed, findDetailed, setStatus, remove };
+function findByRotation(rotationId) {
+  return get('SELECT * FROM broadcasts WHERE rotation_id = ? ORDER BY created_at DESC LIMIT 1', [rotationId]);
+}
+
+async function updateMedia(id, mediaId) {
+  await run('UPDATE broadcasts SET media_id = ? WHERE id = ?', [mediaId, id]);
+}
+
+async function createForRotation(rotationId, channelId, title) {
+  const { randomUUID } = require('crypto');
+  const id = randomUUID();
+  await run(
+    `INSERT INTO broadcasts (id, channel_id, title, rotation_id, status)
+     VALUES (?, ?, ?, ?, 'standby')`,
+    [id, channelId, title, rotationId]
+  );
+  return findDetailed(id);
+}
+
+module.exports = { create, allDetailed, findDetailed, setStatus, remove, findByRotation, updateMedia, createForRotation };
