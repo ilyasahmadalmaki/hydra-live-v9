@@ -14,6 +14,7 @@ const Media = require('./models/Media');
 const Settings = require('./models/Settings');
 const Rotation = require('./models/Rotation');
 const OAuthCredential = require('./models/OAuthCredential');
+const User = require('./models/User');
 const streamer = require('./services/streamingService');
 const rotationService = require('./services/rotationService');
 const youtube = require('./services/youtubeService');
@@ -43,9 +44,14 @@ app.use(session({
   cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 }
 }));
 
-// Global view data: daftar channel + channel aktif (untuk switcher)
+// Global auth gate: semua halaman & API butuh login (kecuali /login & /setup).
+// Static assets diserve di atas, jadi login page tetap dapat CSS/JS.
+app.use(require('./middleware/auth').requireAuth);
+
+// Global view data: user + daftar channel + channel aktif (untuk switcher)
 app.use(async (req, res, next) => {
   res.locals.appName = 'HYDRALIVE';
+  res.locals.user = req.session.user || null;
   try {
     res.locals.channels = await Channel.all();
     res.locals.activeChannel = await Channel.getActive();
@@ -54,6 +60,46 @@ app.use(async (req, res, next) => {
     res.locals.activeChannel = null;
   }
   next();
+});
+
+// ---------- Auth: login / setup / logout ----------
+// Halaman ini di-whitelist di middleware/auth (tidak butuh login).
+app.get('/login', (req, res) => {
+  if (req.session.user) return res.redirect('/');
+  res.render('login', { title: 'LOGIN', error: null });
+});
+
+app.post('/login', async (req, res) => {
+  const u = await User.verify(req.body.username, req.body.password).catch(() => null);
+  if (!u) return res.render('login', { title: 'LOGIN', error: 'username / password salah' });
+  req.session.user = u;
+  res.redirect(req.session.returnTo || '/');
+  delete req.session.returnTo;
+});
+
+// Setup admin pertama (hanya bisa diakses kalau belum ada user sama sekali)
+app.get('/setup', async (req, res) => {
+  if (await User.count().catch(() => 1) > 0) return res.redirect('/login');
+  res.render('setup', { title: 'SETUP', error: null });
+});
+
+app.post('/setup', async (req, res) => {
+  if (await User.count().catch(() => 1) > 0) return res.redirect('/login');
+  const username = (req.body.username || '').trim();
+  const password = req.body.password || '';
+  if (!username) return res.render('setup', { title: 'SETUP', error: 'username wajib diisi' });
+  if (password.length < 6) return res.render('setup', { title: 'SETUP', error: 'password minimal 6 karakter' });
+  try {
+    const u = await User.create({ username, password, role: 'admin' });
+    req.session.user = u;
+    res.redirect('/');
+  } catch (e) {
+    res.render('setup', { title: 'SETUP', error: 'username sudah dipakai' });
+  }
+});
+
+app.post('/logout', (req, res) => {
+  req.session.destroy(() => res.redirect('/login'));
 });
 
 // ---------- Halaman ----------
