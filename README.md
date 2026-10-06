@@ -67,12 +67,29 @@ hydra-live-v9/
 - [x] Engine tick 30 detik: auto-start saat masuk window, auto-stop + geser index saat window tutup
 - [ ] Login & proteksi halaman (sisa fase 1)
 
-### Fase 3 — YouTube API penuh
-- [ ] OAuth per channel (YouTube Data API v3)
-- [ ] Auto-create broadcast persistent via API
-- [ ] Monitoring health + viewer count real-time
-- [ ] Notifikasi Telegram (stream putus/error)
-- [ ] Enkripsi stream key di database
+### Fase 3 — YouTube API penuh (IN PROGRESS)
+- [x] OAuth per channel (YouTube Data API v3) — alur connect di halaman Channels
+- [x] Auto-create broadcast persistent via API (1x per rotasi, ~4800 unit; auto-recreate bila mati)
+- [x] Monitoring health + viewer count real-time (polling hemat: tiap 2 menit, 1 unit/call)
+- [x] Notifikasi Telegram (rotasi error, health buruk, pulih kembali)
+- [x] Enkripsi stream key & OAuth token di database (AES-256-GCM)
+- [ ] Login & proteksi halaman (sisa fase 1)
+
+## Setup YouTube API (Google Cloud)
+
+1. Buka [Google Cloud Console](https://console.cloud.google.com) → buat project baru
+2. **APIs & Services → Library** → cari **YouTube Data API v3** → Enable
+3. **APIs & Services → OAuth consent screen** → tipe External → isi nama aplikasi
+   → tambah scope `youtube` & `youtube.force-ssl` → tambah email lu sebagai Test user
+4. **APIs & Services → Credentials** → Create Credentials → **OAuth client ID**
+   → tipe **Web application** → Authorized redirect URI = URL yang tampil di halaman
+   Channels HydraLive (default `http://localhost:3000/auth/youtube/callback`)
+5. Salin **Client ID** & **Client Secret** → masukkan di halaman Channels → SIMPAN
+6. Klik **🔑 DAPATKAN AKSES** → login Google → Allow
+7. Klik **▶ CHANNEL YT** → hubungkan ke channel HydraLive → channel pindah ke **YT-API mode**
+
+> Kuota default 10.000 unit/hari per project. Tulis (±1600/broadcast, stream, bind)
+> hanya terjadi sekali per rotasi; monitoring baca cuma 1 unit per call.
 
 ## Lisensi
 
