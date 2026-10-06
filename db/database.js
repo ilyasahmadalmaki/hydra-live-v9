@@ -89,6 +89,29 @@ db.serialize(() => {
   db.run(`ALTER TABLE broadcasts ADD COLUMN rotation_id TEXT`, (err) => {
     // abaikan error "duplicate column name" — kolom sudah ada
   });
+
+  // ---- Fase 3: YouTube API (OAuth per channel) ----
+  db.run(`CREATE TABLE IF NOT EXISTS oauth_credentials (
+    id TEXT PRIMARY KEY,
+    label TEXT NOT NULL,
+    client_id TEXT NOT NULL,
+    client_secret TEXT NOT NULL,
+    access_token TEXT,
+    refresh_token TEXT,
+    token_expiry TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+
+  // Kolom YouTube di channels (ditambah bertahap, abaikan bila sudah ada)
+  ['youtube_channel_id TEXT', 'youtube_channel_name TEXT', 'youtube_thumbnail TEXT',
+   'oauth_credential_id TEXT', 'yt_broadcast_id TEXT', 'yt_stream_id TEXT',
+   'yt_ingestion_url TEXT', 'yt_stream_key TEXT'].forEach(col => {
+    db.run(`ALTER TABLE channels ADD COLUMN ${col}`, () => {});
+  });
+
+  // viewers & health terakhir (diisi monitor Fase 3)
+  db.run(`ALTER TABLE broadcasts ADD COLUMN viewers INTEGER DEFAULT 0`, () => {});
+  db.run(`ALTER TABLE broadcasts ADD COLUMN health TEXT`, () => {});
 });
 
 module.exports = db;
