@@ -1,0 +1,14 @@
+<nav class="hz-side">
+  <% const nav = [
+    ['dashboard', 'DASHBOARD', '/'],
+    ['transmissions', 'TRANSMISSIONS', '#'],
+    ['media', 'MEDIA_VAULT', '#'],
+    ['playlists', 'PLAYLISTS', '#'],
+    ['scheduler', 'SCHEDULER', '#'],
+    ['logs', 'LOGS', '#'],
+    ['settings', 'SETTINGS', '#'],
+  ]; %>
+  <% nav.forEach(function(item){ %>
+    <a href="<%= item[2] %>" class="hz-nav <%= active === item[0] ? 'active' : '' %>"><span class="g">▸</span><%= item[1] %></a>
+  <% }) %>
+</nav>
