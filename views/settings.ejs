@@ -1,0 +1,37 @@
+<%- include('partials/header', { title: 'SETTINGS', active: 'settings' }) %>
+
+<p class="hz-sec">ENCODER_DEFAULTS</p>
+<div class="hz-card">
+  <form method="POST" action="/settings" class="hz-form">
+    <div class="hz-field">
+      <label>VIDEO BITRATE</label>
+      <select class="hz-select" name="video_bitrate">
+        <% ['2500k','4500k','6000k','8000k'].forEach(function(b){ %>
+          <option value="<%= b %>" <%= settings.video_bitrate===b?'selected':'' %>><%= b %></option>
+        <% }) %>
+      </select>
+      <p class="hz-hint">▸ 4500k aman untuk 1080p YouTube. 6000k–8000k untuk kualitas maksimal.</p>
+    </div>
+    <div class="hz-field">
+      <label>FFMPEG PRESET</label>
+      <select class="hz-select" name="ffmpeg_preset">
+        <% ['ultrafast','superfast','veryfast','faster','fast','medium'].forEach(function(p){ %>
+          <option value="<%= p %>" <%= settings.ffmpeg_preset===p?'selected':'' %>><%= p %></option>
+        <% }) %>
+      </select>
+      <p class="hz-hint">▸ veryfast = seimbang. ultrafast = ringan CPU, file lebih besar.</p>
+    </div>
+    <div class="hz-field">
+      <button class="hz-btn go" type="submit">💾 SIMPAN</button>
+    </div>
+  </form>
+</div>
+
+<p class="hz-sec" style="margin-top:20px">SYSTEM</p>
+<div class="hz-card">
+  <div class="hz-stat"><span>database</span><b>data/hydra.db</b></div>
+  <div class="hz-stat"><span>upload dir</span><b>uploads/</b></div>
+  <div class="hz-stat"><span>version</span><b class="cy">V9 // NIGHTFALL</b></div>
+</div>
+
+<%- include('partials/footer') %>
