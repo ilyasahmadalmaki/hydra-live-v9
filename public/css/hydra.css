@@ -1,0 +1,173 @@
+/* ============ HYDRALIVE V9 — design system ============ */
+:root{
+  --hz-bg:#05070c;
+  --hz-panel:#040c08;
+  --hz-line:#0f2b1d;
+  --hz-line-bright:#123524;
+  --hz-green:#00ff41;
+  --hz-cyan:#00f0ff;
+  --hz-pink:#ff2a6d;
+  --hz-amber:#ffb300;
+  --hz-text:#c9f5d8;
+  --hz-dim:#5b8a6c;
+  --hz-faint:#3f5a4b;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:'JetBrains Mono',monospace;
+  background:#010204;
+  color:var(--hz-text);
+  min-height:100vh;
+  padding:18px;
+}
+a{text-decoration:none;color:inherit}
+
+/* ---- shell ---- */
+.hz-root{
+  background:var(--hz-bg);
+  border:1px solid var(--hz-line);
+  border-radius:10px;
+  overflow:hidden;
+  position:relative;
+  max-width:1280px;
+  margin:0 auto;
+  min-height:calc(100vh - 36px);
+  display:flex;
+  flex-direction:column;
+}
+.hz-root::before{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:5;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.22) 0 1px,transparent 1px 3px);
+}
+.hz-grid-bg{
+  position:absolute;inset:0;pointer-events:none;opacity:.5;
+  background-image:linear-gradient(rgba(0,255,65,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,65,.05) 1px,transparent 1px);
+  background-size:28px 28px;
+  -webkit-mask-image:radial-gradient(ellipse at 50% 0%,black 30%,transparent 75%);
+  mask-image:radial-gradient(ellipse at 50% 0%,black 30%,transparent 75%);
+}
+
+/* ---- topbar ---- */
+.hz-topbar{
+  display:flex;align-items:center;gap:14px;
+  padding:12px 18px;border-bottom:1px solid var(--hz-line);
+  background:rgba(3,8,5,.85);position:relative;z-index:2;flex-wrap:wrap;
+}
+.hz-logo{
+  font-family:'Rajdhani',sans-serif;font-weight:700;font-size:20px;
+  letter-spacing:3px;color:var(--hz-green);
+  text-shadow:0 0 12px rgba(0,255,65,.8);
+}
+.hz-logo span{color:var(--hz-pink);text-shadow:0 0 12px rgba(255,42,109,.8)}
+.hz-badge{
+  font-size:10px;letter-spacing:2px;padding:4px 10px;
+  border:1px solid var(--hz-green);color:var(--hz-green);
+  border-radius:3px;background:rgba(0,255,65,.06);
+}
+.hz-badge.warn{border-color:var(--hz-amber);color:var(--hz-amber);background:rgba(255,179,0,.06)}
+.hz-clock{margin-left:auto;font-size:11px;color:var(--hz-cyan);letter-spacing:1px}
+
+/* ---- body / sidebar ---- */
+.hz-body{display:flex;position:relative;z-index:2;flex:1;min-height:420px}
+.hz-side{
+  width:190px;flex-shrink:0;border-right:1px solid var(--hz-line);
+  background:rgba(3,8,5,.7);padding:14px 0;
+}
+.hz-nav{
+  display:block;font-size:11px;letter-spacing:1px;
+  padding:10px 18px;color:var(--hz-dim);
+  border-left:2px solid transparent;white-space:nowrap;
+  transition:all .15s;
+}
+.hz-nav .g{color:var(--hz-green);margin-right:8px}
+.hz-nav:hover{color:var(--hz-text);background:rgba(0,255,65,.04)}
+.hz-nav.active{
+  color:var(--hz-green);background:rgba(0,255,65,.07);
+  border-left-color:var(--hz-green);
+  text-shadow:0 0 8px rgba(0,255,65,.7);
+}
+.hz-main{flex:1;padding:20px;min-width:0}
+
+/* ---- sections & cards ---- */
+.hz-sec{
+  font-size:11px;letter-spacing:3px;color:var(--hz-pink);
+  margin:0 0 12px;text-shadow:0 0 10px rgba(255,42,109,.6);
+}
+.hz-sec::before{content:"> "}
+.hz-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px}
+.hz-card{
+  border:1px solid var(--hz-line-bright);
+  background:rgba(4,12,8,.85);border-radius:6px;
+  padding:14px;position:relative;overflow:hidden;
+}
+.hz-card::after{
+  content:"";position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--hz-green),transparent);
+}
+.hz-card.live::after{background:linear-gradient(90deg,var(--hz-pink),var(--hz-green))}
+.hz-plat{
+  font-family:'Rajdhani',sans-serif;font-weight:700;font-size:15px;
+  letter-spacing:2px;color:#eafff0;margin-bottom:8px;
+  display:flex;align-items:center;gap:8px;
+}
+.hz-dot{
+  width:9px;height:9px;border-radius:50%;
+  background:var(--hz-green);box-shadow:0 0 10px var(--hz-green);
+  animation:hzblink 1.2s infinite;
+}
+.hz-dot.red{background:var(--hz-pink);box-shadow:0 0 10px var(--hz-pink)}
+@keyframes hzblink{0%,100%{opacity:1}50%{opacity:.25}}
+.hz-stat{display:flex;justify-content:space-between;font-size:11px;color:var(--hz-dim);margin-top:5px;gap:8px}
+.hz-stat b{color:var(--hz-text);font-weight:500;text-align:right}
+.hz-stat b.cy{color:var(--hz-cyan)}
+.hz-btn{
+  display:inline-block;margin-top:12px;font-size:11px;letter-spacing:2px;
+  padding:8px 14px;border:1px solid var(--hz-pink);color:var(--hz-pink);
+  border-radius:3px;background:rgba(255,42,109,.07);cursor:pointer;
+  font-family:inherit;transition:all .15s;
+}
+.hz-btn:hover{background:rgba(255,42,109,.18);box-shadow:0 0 12px rgba(255,42,109,.4)}
+.hz-btn.go{border-color:var(--hz-green);color:var(--hz-green);background:rgba(0,255,65,.07)}
+.hz-btn.go:hover{background:rgba(0,255,65,.18);box-shadow:0 0 12px rgba(0,255,65,.4)}
+
+/* ---- panels ---- */
+.hz-panels{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.hz-bar{height:6px;background:#0a1a12;border-radius:3px;margin-top:6px;overflow:hidden}
+.hz-bar i{
+  display:block;height:100%;width:0%;
+  background:linear-gradient(90deg,var(--hz-green),var(--hz-cyan));
+  box-shadow:0 0 8px rgba(0,255,65,.7);
+  transition:width .8s;
+}
+
+/* ---- terminal ---- */
+.hz-term{
+  border:1px solid var(--hz-line-bright);background:#020503;
+  border-radius:6px;padding:12px 14px;font-size:11px;
+  line-height:1.75;min-height:170px;max-height:260px;overflow-y:auto;
+}
+.hz-term .p{color:var(--hz-green)}
+.hz-term .dim{color:var(--hz-faint)}
+.hz-term .warn{color:var(--hz-amber)}
+.hz-term .err{color:var(--hz-pink)}
+.hz-term .cy{color:var(--hz-cyan)}
+.hz-cursor{
+  display:inline-block;width:8px;height:14px;background:var(--hz-green);
+  vertical-align:-2px;animation:hzblink 1s infinite;
+}
+
+/* ---- footer ---- */
+.hz-foot{
+  padding:10px 18px;border-top:1px solid var(--hz-line);
+  font-size:10px;letter-spacing:2px;color:var(--hz-faint);
+  display:flex;gap:18px;position:relative;z-index:2;flex-wrap:wrap;
+}
+.hz-foot b{color:var(--hz-green);font-weight:500}
+
+/* ---- responsive ---- */
+@media(max-width:720px){
+  .hz-panels{grid-template-columns:1fr}
+  .hz-side{display:none}
+  body{padding:8px}
+}
