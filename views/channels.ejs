@@ -6,14 +6,23 @@
     <div class="hz-empty">_belum ada channel. tambahkan di bawah_</div>
   <% } else { %>
     <table class="hz-table">
-      <thead><tr><th>NAMA</th><th>MODE</th><th>RTMP URL</th><th>STREAM KEY</th><th>STATUS</th><th>AKSI</th></tr></thead>
+      <thead><tr><th>NAMA</th><th>MODE</th><th>YOUTUBE</th><th>RTMP / KEY</th><th>STATUS</th><th>AKSI</th></tr></thead>
       <tbody>
         <% channels.forEach(function(c){ %>
           <tr>
             <td><b><%= c.name %></b></td>
-            <td><span class="hz-tag">STREAMKEY</span></td>
-            <td class="hz-mono-sm"><%= c.rtmp_url || '—' %></td>
-            <td class="hz-mono-sm"><%= c.stream_key ? c.stream_key.slice(0,4) + '••••••••' : '—' %></td>
+            <td>
+              <% if (c.mode === 'api') { %><span class="hz-tag go">YT-API</span><% } else { %><span class="hz-tag">STREAMKEY</span><% } %>
+            </td>
+            <td class="hz-mono-sm">
+              <% if (c.youtube_channel_name) { %>
+                <%= c.youtube_channel_name %>
+                <form method="POST" action="/channels/<%= c.id %>/unlink-youtube" style="margin-top:4px" onsubmit="return confirm('Putuskan hubungan YouTube API? Channel kembali ke streamkey mode.')">
+                  <button class="hz-btn sm ghost" type="submit">UNLINK</button>
+                </form>
+              <% } else { %><span class="hz-dim">—</span><% } %>
+            </td>
+            <td class="hz-mono-sm"><%= c.mode === 'api' ? '<span class="hz-dim">via API</span>' : ((c.rtmp_url || '—') + '<br>' + (c.stream_key ? c.stream_key.slice(0,4) + '••••••••' : '—')) %></td>
             <td><%= c.is_active ? '<span class="hz-tag go">AKTIF</span>' : '<span class="hz-dim">—</span>' %></td>
             <td class="hz-acts">
               <% if (!c.is_active) { %>
@@ -21,7 +30,7 @@
                   <button class="hz-btn go sm" type="submit">AKTIFKAN</button>
                 </form>
               <% } %>
-              <form method="POST" action="/channels/<%= c.id %>/delete" onsubmit="return confirm('Hapus channel <%= c.name %>? Broadcast miliknya ikut terhapus.')">
+              <form method="POST" action="/channels/<%= c.id %>/delete" onsubmit="return confirm('Hapus channel <%= c.name %>?')">
                 <button class="hz-btn sm" type="submit">✕</button>
               </form>
             </td>
@@ -32,7 +41,7 @@
   <% } %>
 </div>
 
-<p class="hz-sec" style="margin-top:20px">TAMBAH_CHANNEL</p>
+<p class="hz-sec" style="margin-top:20px">TAMBAH_CHANNEL <span class="hz-dim">(streamkey)</span></p>
 <div class="hz-card">
   <form method="POST" action="/channels" class="hz-form">
     <div class="hz-field">
@@ -40,19 +49,64 @@
       <input class="hz-input" name="name" required placeholder="Rain Sounds ID">
     </div>
     <div class="hz-field">
-      <label>RTMP URL <span class="hz-dim">(dari YouTube Studio → Stream settings)</span></label>
+      <label>RTMP URL <span class="hz-dim">(YouTube Studio → Stream settings)</span></label>
       <input class="hz-input" name="rtmp_url" required placeholder="rtmp://a.rtmp.youtube.com/live2">
     </div>
     <div class="hz-field">
-      <label>STREAM KEY</label>
+      <label>STREAM KEY <span class="hz-dim">(tersimpan terenkripsi)</span></label>
       <input class="hz-input" type="password" name="stream_key" required placeholder="xxxx-xxxx-xxxx-xxxx" autocomplete="off">
     </div>
     <div class="hz-field">
       <button class="hz-btn go" type="submit">+ TAMBAH</button>
     </div>
   </form>
-  <p class="hz-hint">▸ Ambil dari YouTube Studio → <b>Go Live</b> → <b>Stream</b> → salin <i>Stream URL</i> &amp; <i>Stream key</i>.<br>
-  ▸ Mode API (OAuth) hadir di Fase 3 — untuk sekarang semua channel pakai streamkey.</p>
+</div>
+
+<p class="hz-sec" style="margin-top:20px">YOUTUBE_API <span class="hz-dim">(OAuth — Fase 3)</span></p>
+<div class="hz-card">
+  <p class="hz-hint" style="margin-top:0">▸ Redirect URI yang harus didaftarkan di Google Cloud Console → Credentials → OAuth client:</p>
+  <div class="hz-code"><%= redirectUri %></div>
+  <p class="hz-hint">▸ Butuh <b>OAuth client ID</b> &amp; <b>client secret</b> (tipe: Web application) dengan <b>YouTube Data API v3</b> aktif.<br>
+  ▸ 1 kredensial = 1 akun Google (bisa punya banyak channel).</p>
+
+  <% if (credentials.length) { %>
+    <table class="hz-table" style="margin-top:12px">
+      <thead><tr><th>LABEL</th><th>CLIENT ID</th><th>AKSI</th></tr></thead>
+      <tbody>
+        <% credentials.forEach(function(cr){ %>
+          <tr>
+            <td><b><%= cr.label %></b></td>
+            <td class="hz-mono-sm"><%= cr.client_id.slice(0, 28) %>…</td>
+            <td class="hz-acts">
+              <a href="/auth/youtube/start/<%= cr.id %>" class="hz-btn go sm" style="text-decoration:none">🔑 DAPATKAN AKSES</a>
+              <a href="/oauth/credentials/<%= cr.id %>/yt-channels" class="hz-btn sm" style="text-decoration:none">▶ CHANNEL YT</a>
+              <form method="POST" action="/oauth/credentials/<%= cr.id %>/delete" onsubmit="return confirm('Hapus kredensial ini?')">
+                <button class="hz-btn sm ghost" type="submit">✕</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+
+  <form method="POST" action="/oauth/credentials" class="hz-form" style="margin-top:14px">
+    <div class="hz-field">
+      <label>LABEL KREDENSIAL</label>
+      <input class="hz-input" name="label" required placeholder="Akun Google Utama">
+    </div>
+    <div class="hz-field">
+      <label>OAUTH CLIENT ID</label>
+      <input class="hz-input" name="client_id" required placeholder="xxxx.apps.googleusercontent.com">
+    </div>
+    <div class="hz-field">
+      <label>OAUTH CLIENT SECRET <span class="hz-dim">(tersimpan terenkripsi)</span></label>
+      <input class="hz-input" type="password" name="client_secret" required autocomplete="off">
+    </div>
+    <div class="hz-field">
+      <button class="hz-btn go" type="submit">+ SIMPAN KREDENSIAL</button>
+    </div>
+  </form>
 </div>
 
 <%- include('partials/footer') %>
