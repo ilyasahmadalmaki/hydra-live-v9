@@ -13,8 +13,11 @@ const Broadcast = require('./models/Broadcast');
 const Media = require('./models/Media');
 const Settings = require('./models/Settings');
 const Rotation = require('./models/Rotation');
+const OAuthCredential = require('./models/OAuthCredential');
 const streamer = require('./services/streamingService');
 const rotationService = require('./services/rotationService');
+const youtube = require('./services/youtubeService');
+const telegram = require('./services/telegramService');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -73,8 +76,91 @@ app.get('/', async (req, res) => {
   });
 });
 
+// ---------- YouTube OAuth (Fase 3) ----------
 app.get('/channels', async (req, res) => {
-  res.render('channels', { title: 'CHANNELS', active: 'channels' });
+  res.render('channels', {
+    title: 'CHANNELS', active: 'channels',
+    credentials: await OAuthCredential.all(),
+    redirectUri: youtube.getRedirectUri()
+  });
+});
+
+app.post('/oauth/credentials', async (req, res) => {
+  try {
+    await OAuthCredential.create(req.body);
+  } catch (e) { console.error('[oauth] create:', e.message); }
+  res.redirect('/channels');
+});
+
+app.post('/oauth/credentials/:id/delete', async (req, res) => {
+  try { await OAuthCredential.remove(req.params.id); } catch (e) {}
+  res.redirect('/channels');
+});
+
+// Langkah 1: redirect ke Google
+app.get('/auth/youtube/start/:id', async (req, res) => {
+  try {
+    const url = await youtube.getAuthUrl(req.params.id);
+    res.redirect(url);
+  } catch (e) {
+    res.status(400).send('Gagal membuat auth URL: ' + e.message);
+  }
+});
+
+// Langkah 2: callback dari Google → tukar code → simpan token
+app.get('/auth/youtube/callback', async (req, res) => {
+  const { code, state, error } = req.query;
+  if (error) return res.status(400).send('OAuth dibatalkan: ' + error);
+  if (!code || !state) return res.status(400).send('code/state hilang');
+  try {
+    await youtube.exchangeCode(state, code);
+    res.redirect('/oauth/credentials/' + state + '/yt-channels');
+  } catch (e) {
+    res.status(500).send('Gagal tukar code: ' + e.message);
+  }
+});
+
+// Daftar channel YouTube milik akun tsb → pilih untuk dihubungkan
+app.get('/oauth/credentials/:id/yt-channels', async (req, res) => {
+  try {
+    const { youtube: yt } = await youtube.getOAuthClient(req.params.id);
+    const list = await yt.channels.list({ part: ['snippet'], mine: true, maxResults: 20 });
+    const channels = (list.data.items || []).map(c => ({
+      id: c.id,
+      title: c.snippet.title,
+      thumbnail: (c.snippet.thumbnails && c.snippet.thumbnails.default || {}).url || null
+    }));
+    const hydraChannels = await Channel.all();
+    res.render('yt-channels', {
+      title: 'PILIH CHANNEL', active: 'channels',
+      credId: req.params.id, channels, hydraChannels
+    });
+  } catch (e) {
+    res.status(500).send('Gagal ambil channel: ' + e.message);
+  }
+});
+
+app.post('/oauth/credentials/:id/link', async (req, res) => {
+  try {
+    const { hydra_channel_id, yt_id, yt_title, yt_thumb } = req.body;
+    await Channel.linkYoutube(hydra_channel_id, {
+      oauth_credential_id: req.params.id,
+      youtube_channel_id: yt_id,
+      youtube_channel_name: yt_title,
+      youtube_thumbnail: yt_thumb
+    });
+  } catch (e) { console.error('[oauth] link:', e.message); }
+  res.redirect('/channels');
+});
+
+app.post('/channels/:id/unlink-youtube', async (req, res) => {
+  try { await Channel.unlinkYoutube(req.params.id); } catch (e) {}
+  res.redirect('/channels');
+});
+
+app.post('/api/telegram/test', async (req, res) => {
+  const ok = await telegram.testMessage();
+  res.json({ ok });
 });
 
 app.get('/media', async (req, res) => {
