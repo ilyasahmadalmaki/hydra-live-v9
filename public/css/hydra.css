@@ -232,3 +232,9 @@ input[type="file"].hz-input{padding:8px 12px}
   color:var(--hz-cyan);padding:10px 12px;border-radius:4px;margin:8px 0;
   word-break:break-all;user-select:all;
 }
+.hz-vidpick{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto;
+  border:1px solid var(--hz-line);border-radius:4px;padding:8px;background:#020503}
+.hz-vidrow{display:flex;gap:10px;align-items:center;cursor:pointer;padding:4px 6px;border-radius:3px}
+.hz-vidrow:hover{background:rgba(0,255,65,.06)}
+.hz-vidrow input[type=checkbox]{width:16px;height:16px;accent-color:var(--hz-green)}
+.hz-ord{width:56px !important;padding:4px 6px !important;font-size:12px}
