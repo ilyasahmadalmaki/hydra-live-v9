@@ -51,23 +51,27 @@ hydra-live-v9/
 
 ## Roadmap
 
-### Fase 1 — Fondasi UI (sekarang)
+### Fase 1 — Fondasi: YouTube streamkey mode (IN PROGRESS)
 - [x] Design system cyberpunk + layout dashboard
-- [ ] Halaman Transmissions (CRUD target RTMP)
-- [ ] Halaman Media Vault (upload & galeri video)
-- [ ] Login + multi-user roles
+- [x] Multi-channel (tambah/aktifkan/hapus, channel switcher)
+- [x] Media vault (upload & kelola video)
+- [x] Broadcast: buat, start/stop FFmpeg → RTMP streamkey, live terminal log
+- [x] Settings encoder (bitrate, preset)
+- [ ] Login & proteksi halaman
 
-### Fase 2 — Streaming Engine
-- [ ] Integrasi FFmpeg (start/stop/monitor via `fluent-ffmpeg`)
-- [ ] Auto-reconnect + failover
-- [ ] Preset kualitas (720p / 1080p / 1080p60)
+### Fase 2 — Loop engine & scheduler
+- [ ] Rotation ala streamflow: setting sekali (channel + daftar video + jam tayang + gap + repeat harian/mingguan)
+- [ ] Mode "loop forever" 24/7 nonstop
+- [ ] Satu broadcast persistent per rotasi (keputusan: hemat kuota API)
+- [ ] Auto-reconnect + retry backoff
+- [ ] Scheduler: auto-start/auto-stop berjadwal
 
-### Fase 3 — Upgrade Fitur
-- [ ] Scheduler + jadwal berulang (recurring)
-- [ ] Playlist drag-and-drop builder
-- [ ] Notifikasi Telegram saat stream putus
-- [ ] Target TikTok Live / Twitch
-- [ ] Statistik penonton real-time (YouTube API)
+### Fase 3 — YouTube API penuh
+- [ ] OAuth per channel (YouTube Data API v3)
+- [ ] Auto-create broadcast persistent via API
+- [ ] Monitoring health + viewer count real-time
+- [ ] Notifikasi Telegram (stream putus/error)
+- [ ] Enkripsi stream key di database
 
 ## Lisensi
 
