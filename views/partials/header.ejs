@@ -18,7 +18,7 @@
 
     <% if (channels && channels.length) { %>
       <form id="hzChForm" method="POST" action="" class="hz-chswitch">
-        <span class="hz-chswitch-label">CHANNEL ▸</span>
+        <span class="hz-chswitch-label">LIVE ▸</span>
         <select id="hzChSel" class="hz-select hz-select-sm">
           <% channels.forEach(function(c){ %>
             <option value="<%= c.id %>" <%= activeChannel && activeChannel.id === c.id ? 'selected' : '' %>>
@@ -28,7 +28,7 @@
         </select>
       </form>
     <% } else { %>
-      <a href="/channels" class="hz-badge warn" style="text-decoration:none">+ ADD CHANNEL</a>
+      <a href="/channels" class="hz-badge warn" style="text-decoration:none">+ ADD LIVE</a>
     <% } %>
 
     <div class="hz-clock" id="hzClock">--:--:--</div>
