@@ -32,6 +32,13 @@
     <% } %>
 
     <div class="hz-clock" id="hzClock">--:--:--</div>
+
+    <% if (user) { %>
+      <span class="hz-badge" style="margin-left:8px">👤 <%= user.username %></span>
+      <form method="POST" action="/logout" style="margin:0">
+        <button type="submit" class="hz-btn ghost" style="padding:4px 10px;font-size:11px">⏻ LOGOUT</button>
+      </form>
+    <% } %>
   </header>
 
   <div class="hz-body">
