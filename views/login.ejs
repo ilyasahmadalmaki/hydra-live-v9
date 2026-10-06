@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOGIN // HYDRALIVE</title>
+<link rel="stylesheet" href="/css/hydra.css">
+<style>
+  .hz-auth-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .hz-auth-card { width: 380px; max-width: 100%; }
+  .hz-auth-sub { text-align: center; color: var(--hz-dim); font-size: 11px; margin: 2px 0 18px; letter-spacing: .25em; }
+  .hz-auth-err { border: 1px solid var(--hz-pink); color: var(--hz-pink); padding: 8px 12px; font-size: 12px; margin-bottom: 14px; background: rgba(255,42,109,.08); }
+  .hz-auth-card .hz-btn { width: 100%; margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="hz-auth-wrap">
+  <div class="hz-card hz-auth-card">
+    <div class="hz-logo" style="text-align:center">HYDRA<span>LIVE</span></div>
+    <div class="hz-auth-sub">>> SECURE ACCESS TERMINAL</div>
+    <% if (error) { %><div class="hz-auth-err">// <%= error %></div><% } %>
+    <form method="POST" action="/login" class="hz-form">
+      <div class="hz-field">
+        <label>USERNAME</label>
+        <input type="text" name="username" class="hz-input" autocomplete="username" autofocus required>
+      </div>
+      <div class="hz-field">
+        <label>PASSWORD</label>
+        <input type="password" name="password" class="hz-input" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="hz-btn go">> UNLOCK SYSTEM</button>
+    </form>
+  </div>
+</div>
+</body>
+</html>
