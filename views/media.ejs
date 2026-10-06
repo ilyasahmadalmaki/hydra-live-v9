@@ -1,0 +1,44 @@
+<%- include('partials/header', { title: 'MEDIA_VAULT', active: 'media' }) %>
+<% function fmtSize(b){ if(!b) return '—'; const u=['B','KB','MB','GB']; let i=0; while(b>=1024&&i<3){b/=1024;i++;} return b.toFixed(1)+' '+u[i]; } %>
+<% function fmtDate(s){ return new Date(s+'Z').toLocaleString('id-ID'); } %>
+
+<p class="hz-sec">UPLOAD_VIDEO</p>
+<div class="hz-card">
+  <form method="POST" action="/media/upload" enctype="multipart/form-data" class="hz-form hz-form-row">
+    <div class="hz-field" style="flex:1">
+      <label>FILE VIDEO</label>
+      <input class="hz-input" type="file" name="video" accept="video/*" required>
+    </div>
+    <div class="hz-field hz-field-btn">
+      <button class="hz-btn go" type="submit">⬆ UPLOAD</button>
+    </div>
+  </form>
+  <p class="hz-hint">▸ Maks 8 GB per file. Format yang disarankan: MP4 (H.264 + AAC).</p>
+</div>
+
+<p class="hz-sec" style="margin-top:20px">VAULT (<%= media.length %>)</p>
+<div class="hz-card">
+  <% if (!media.length) { %>
+    <div class="hz-empty">_vault kosong. upload video dulu bro_</div>
+  <% } else { %>
+    <table class="hz-table">
+      <thead><tr><th>FILENAME</th><th>SIZE</th><th>UPLOADED</th><th>AKSI</th></tr></thead>
+      <tbody>
+        <% media.forEach(function(m){ %>
+          <tr>
+            <td class="hz-mono-sm"><b><%= m.filename %></b></td>
+            <td><%= fmtSize(m.size) %></td>
+            <td class="hz-mono-sm"><%= fmtDate(m.created_at) %></td>
+            <td>
+              <form method="POST" action="/media/<%= m.id %>/delete" onsubmit="return confirm('Hapus <%= m.filename %>?')">
+                <button class="hz-btn sm" type="submit">✕ HAPUS</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>
