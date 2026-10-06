@@ -56,6 +56,39 @@ db.serialize(() => {
   db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES
     ('video_bitrate', '4500k'),
     ('ffmpeg_preset', 'veryfast')`);
+
+  // ---- Fase 2: Rotation (penjadwalan ala streamflow) ----
+  // Rotation = setting sekali: channel + daftar video + jam tayang + gap + repeat.
+  // repeat_mode: 'daily' | 'weekly' | 'forever' (24/7 nonstop, tanpa window)
+  db.run(`CREATE TABLE IF NOT EXISTS rotations (
+    id TEXT PRIMARY KEY,
+    channel_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    repeat_mode TEXT NOT NULL DEFAULT 'daily',
+    window_start TEXT,
+    window_end TEXT,
+    weekly_day INTEGER,
+    gap_minutes INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'active',
+    current_index INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (channel_id) REFERENCES channels(id) ON DELETE CASCADE
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS rotation_items (
+    id TEXT PRIMARY KEY,
+    rotation_id TEXT NOT NULL,
+    media_id TEXT NOT NULL,
+    order_index INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (rotation_id) REFERENCES rotations(id) ON DELETE CASCADE,
+    FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE
+  )`);
+
+  // Broadcast bisa milik sebuah rotation (1 broadcast persistent per rotasi)
+  db.run(`ALTER TABLE broadcasts ADD COLUMN rotation_id TEXT`, (err) => {
+    // abaikan error "duplicate column name" — kolom sudah ada
+  });
 });
 
 module.exports = db;
